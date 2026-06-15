@@ -6,7 +6,7 @@
 
 // ---------- 1. KẾT NỐI DATABASE ----------
 $host   = 'localhost';
-$db     = 'campus_dormitory';   // đổi tên DB nếu khác
+$db     = 'campus_final';   // đổi tên DB nếu khác
 $user   = 'root';
 $pass   = '';
 $charset = 'utf8mb4';

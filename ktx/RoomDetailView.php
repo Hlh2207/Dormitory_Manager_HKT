@@ -7,7 +7,7 @@
 
 // ---------- 1. KẾT NỐI DATABASE ----------
 $host    = 'localhost';
-$db      = 'campus_dormitory';
+$db      = 'campus_final';
 $user    = 'root';
 $pass    = '';
 $charset = 'utf8mb4';
