@@ -15,22 +15,18 @@ try {
     die('<p style="color:red">Kết nối DB thất bại: ' . htmlspecialchars($e->getMessage()) . '</p>');
 }
 
-// ---------- XỬ LÝ XÓA ----------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete') {
     $delId = filter_input(INPUT_POST, 'invoice_id', FILTER_VALIDATE_INT);
     if ($delId) $pdo->prepare("DELETE FROM invoices WHERE invoice_id = ?")->execute([$delId]);
     header('Location: InvoiceView.php'); exit;
 }
 
-// ---------- THÁNG CÓ DỮ LIỆU (dropdown filter) ----------
 $months = $pdo->query("SELECT DISTINCT billing_month FROM invoices ORDER BY billing_month DESC")->fetchAll(PDO::FETCH_COLUMN);
 
-// ---------- BỘ LỌC ----------
 $search       = trim($_GET['search']        ?? '');
 $filterMonth  = trim($_GET['billing_month'] ?? '');
 $filterStatus = trim($_GET['status']        ?? '');
 
-// ---------- QUERY ----------
 $sql = "
     SELECT
         i.invoice_id, i.invoice_code, i.billing_month,
@@ -64,7 +60,6 @@ $sql .= ' ORDER BY i.billing_month DESC, i.invoice_id DESC';
 $stmt = $pdo->prepare($sql); $stmt->execute($params);
 $invoices = $stmt->fetchAll();
 
-// ---------- THỐNG KÊ ----------
 $total    = count($invoices);
 $paid     = count(array_filter($invoices, fn($i) => $i['status_code'] === 'paid'));
 $unpaid   = count(array_filter($invoices, fn($i) => $i['status_code'] === 'unpaid'));
@@ -74,7 +69,6 @@ $totalAmt = array_sum(array_column($invoices, 'total_amount'));
 $paidAmt  = array_sum(array_column($invoices, 'paid_amount'));
 $debtAmt  = $totalAmt - $paidAmt;
 
-// ---------- HELPER FUNCTIONS ----------
 function ivStatusLabel(string $c): array {
     return match($c) {
         'paid'    => ['Đã thanh toán', 'badge-green'],
@@ -94,7 +88,7 @@ function payMethod(string $m): string {
         default         => $m,
     };
 }
-function fmtMoney(float $n): string { return number_format($n, 0, ',', '.') . ' ₫'; }
+function fmtMoney(float $n): string { return number_format($n, 0, ',', '.') . ' VND'; }
 function fmtDate(?string $d): string {
     if (!$d) return '—'; $t = strtotime($d); return $t ? date('d/m/Y', $t) : $d;
 }
@@ -107,7 +101,7 @@ function fmtDate(?string $d): string {
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-    --bg:#f0f2f5;--card:#fff;--primary:#1d4ed8;--primary-lt:#eff6ff;
+    --bg:#f0f2f5;--card:#fff;--primary:#0ea5a4;--primary-lt:#e0f2f1;
     --text:#1e293b;--muted:#64748b;--border:#e2e8f0;
     --green:#16a34a;--green-lt:#dcfce7;--red:#dc2626;--red-lt:#fee2e2;
     --yellow:#ca8a04;--yellow-lt:#fef9c3;--blue:#2563eb;--blue-lt:#dbeafe;
@@ -124,16 +118,12 @@ nav a:hover,nav a.active{background:rgba(255,255,255,.15);opacity:1}
 .page-title{font-size:22px;font-weight:700;display:flex;align-items:center;gap:10px;margin-bottom:6px}
 .page-title::before{content:'';display:block;width:4px;height:28px;background:var(--primary);border-radius:2px}
 .page-desc{color:var(--muted);font-size:14px;margin-bottom:24px}
-
-/* STATS */
 .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:14px;margin-bottom:24px}
 .stat-card{background:var(--card);border-radius:var(--radius);padding:16px 20px;box-shadow:var(--shadow);border-left:4px solid var(--primary)}
 .stat-card.green{border-color:var(--green)}.stat-card.yellow{border-color:var(--yellow)}
 .stat-card.red{border-color:var(--red)}.stat-card.blue{border-color:var(--blue)}.stat-card.orange{border-color:var(--orange)}
-.stat-value{font-size:22px;font-weight:700}.stat-sub{font-size:11px;color:var(--muted);margin-top:1px;font-weight:400}
+.stat-value{font-size:22px;font-weight:700}
 .stat-label{font-size:12px;color:var(--muted);margin-top:4px}
-
-/* TOOLBAR */
 .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
 .search-box{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 14px;flex:1;min-width:180px;max-width:340px;box-shadow:var(--shadow)}
 .search-box input{border:none;outline:none;font-size:14px;width:100%;background:transparent;color:var(--text)}
@@ -141,13 +131,11 @@ nav a:hover,nav a.active{background:rgba(255,255,255,.15);opacity:1}
 .filter-select{padding:8px 32px 8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--text);background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat right 10px center;-webkit-appearance:none;appearance:none;cursor:pointer;box-shadow:var(--shadow)}
 .filter-select:focus{outline:none;border-color:var(--primary)}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;border:none;text-decoration:none;transition:background .15s}
-.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:#1e40af}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:#0b8483}
 .btn-danger{background:var(--red-lt);color:var(--red);border:1px solid #fca5a5}.btn-danger:hover{background:#fee2e2}
-.btn-edit{background:var(--primary-lt);color:var(--primary);border:1px solid #bfdbfe}.btn-edit:hover{background:#dbeafe}
+.btn-edit{background:var(--primary-lt);color:var(--primary);border:1px solid #b2dfdb}.btn-edit:hover{background:#b2dfdb}
 .btn-sm{padding:5px 11px;font-size:12px;border-radius:6px}
 .btn-clear{background:#f1f5f9;color:var(--muted);border:1px solid var(--border)}
-
-/* TABLE */
 .table-wrap{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
 .table-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
 .table-header h2{font-size:15px;font-weight:600}
@@ -159,39 +147,22 @@ tbody tr{border-bottom:1px solid var(--border);transition:background .12s}
 tbody tr:last-child{border-bottom:none}
 tbody tr:hover{background:#f8fafc}
 td{padding:11px 12px;vertical-align:middle}.td-right{text-align:right}
-
-/* BADGE */
 .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap}
 .badge-green{background:var(--green-lt);color:var(--green)}.badge-blue{background:var(--blue-lt);color:var(--blue)}
 .badge-yellow{background:var(--yellow-lt);color:var(--yellow)}.badge-red{background:var(--red-lt);color:var(--red)}
 .badge-gray{background:#f1f5f9;color:var(--muted)}
-
-/* AVATAR */
 .avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0}
-
-/* UTILITY PILLS */
 .util-row{display:flex;flex-direction:column;gap:2px}
 .util-pill{font-size:10px;color:var(--muted);white-space:nowrap}
 .util-amount{font-size:12px;font-weight:600;color:var(--text)}
-
-/* PROGRESS BAR */
 .pay-wrap{min-width:100px}
 .pay-bar{height:5px;background:#e2e8f0;border-radius:3px;margin-top:4px;overflow:hidden}
 .pay-fill{height:100%;border-radius:3px;background:var(--green);transition:width .3s}
 .pay-fill.partial{background:var(--blue)}.pay-fill.overdue{background:var(--red)}
 .pay-text{font-size:11px;font-weight:600}
-
-/* MONTH BADGE */
 .month-pill{display:inline-flex;align-items:center;padding:4px 10px;background:var(--primary-lt);color:var(--primary);border-radius:6px;font-size:12px;font-weight:700;letter-spacing:.3px}
-
-/* EMPTY */
 .empty{text-align:center;padding:60px 20px;color:var(--muted)}
 .empty-icon{font-size:40px;margin-bottom:12px}
-
-/* SUMMARY ROW */
-.summary-row{background:#f8fafc!important}
-.summary-row td{font-weight:700;font-size:13px;border-top:2px solid var(--border)!important}
-
 @media(max-width:768px){nav{display:none}.hide-mobile{display:none}.stats-row{grid-template-columns:1fr 1fr 1fr}}
 @media(max-width:480px){.stats-row{grid-template-columns:1fr 1fr}}
 </style>
@@ -200,11 +171,11 @@ td{padding:11px 12px;vertical-align:middle}.td-right{text-align:right}
 <header class="site-header">
     <div><div class="logo">🏢 KTX Campus</div><div class="subtitle">Hệ thống quản lý ký túc xá</div></div>
     <nav>
-        <a href="BuildingListView.php">Tòa nhà</a>
-        <a href="StudentListView.php">Sinh viên</a>
-        <a href="ContractListView.php">Hợp đồng</a>
-        <a href="InvoiceView.php" class="active">Hóa đơn</a>
-        <a href="ViolationView.php">Vi phạm</a>
+        <a href="BuildingListView.php" class="<?= basename($_SERVER['PHP_SELF']) == 'BuildingListView.php' || basename($_SERVER['PHP_SELF']) == 'RoomDetailView.php' ? 'active' : '' ?>">Tòa nhà</a>
+        <a href="StudentListView.php"  class="<?= basename($_SERVER['PHP_SELF']) == 'StudentListView.php' || basename($_SERVER['PHP_SELF']) == 'StudentFormView.php' ? 'active' : '' ?>">Sinh viên</a>
+        <a href="ContractListView.php" class="<?= basename($_SERVER['PHP_SELF']) == 'ContractListView.php' || basename($_SERVER['PHP_SELF']) == 'ContractFormView.php' ? 'active' : '' ?>">Hợp đồng</a>
+        <a href="InvoiceView.php"      class="<?= basename($_SERVER['PHP_SELF']) == 'InvoiceView.php' ? 'active' : '' ?>">Hóa đơn</a>
+        <a href="#">Vi phạm</a>
     </nav>
 </header>
 
@@ -212,7 +183,6 @@ td{padding:11px 12px;vertical-align:middle}.td-right{text-align:right}
     <h1 class="page-title">Quản lý hóa đơn</h1>
     <p class="page-desc">Hóa đơn tiền phòng, điện, nước từng phòng theo tháng — theo dõi thanh toán và công nợ.</p>
 
-    <!-- STATS -->
     <div class="stats-row">
         <div class="stat-card">
             <div class="stat-value"><?= $total ?></div>
@@ -240,7 +210,6 @@ td{padding:11px 12px;vertical-align:middle}.td-right{text-align:right}
         </div>
     </div>
 
-    <!-- TOOLBAR -->
     <form method="GET">
         <div class="toolbar">
             <div class="search-box">
@@ -277,7 +246,6 @@ td{padding:11px 12px;vertical-align:middle}.td-right{text-align:right}
         </div>
     </form>
 
-    <!-- TABLE -->
     <div class="table-wrap">
         <div class="table-header">
             <h2>🧾 Hóa đơn
@@ -335,7 +303,6 @@ td{padding:11px 12px;vertical-align:middle}.td-right{text-align:right}
                         $otherFee = $inv['service_fee'] + $inv['penalty_fee'] - $inv['discount'];
                     ?>
                     <tr>
-                        <!-- Sinh viên -->
                         <td>
                             <div style="display:flex;align-items:center;gap:9px">
                                 <div class="avatar" style="background:<?= $color ?>"><?= $initials ?></div>
@@ -346,35 +313,29 @@ td{padding:11px 12px;vertical-align:middle}.td-right{text-align:right}
                                 </div>
                             </div>
                         </td>
-                        <!-- Mã HĐ -->
                         <td>
                             <code style="font-size:11px;background:#f1f5f9;padding:2px 6px;border-radius:4px;white-space:nowrap">
                                 <?= htmlspecialchars($inv['invoice_code']) ?>
                             </code>
                         </td>
-                        <!-- Tháng -->
                         <td class="hide-mobile">
                             <span class="month-pill"><?= date('m/Y', strtotime($inv['billing_month'] . '-01')) ?></span>
                         </td>
-                        <!-- Tiền phòng -->
                         <td class="td-right hide-mobile">
                             <div class="util-amount"><?= fmtMoney((float)$inv['room_fee']) ?></div>
                         </td>
-                        <!-- Điện -->
                         <td class="td-right hide-mobile">
                             <div class="util-row">
                                 <div class="util-amount">🔌 <?= fmtMoney((float)$inv['electricity_fee']) ?></div>
                                 <div class="util-pill"><?= number_format((float)$inv['electricity_kwh'],1,',','.') ?> kWh × <?= fmtMoney((float)$inv['electricity_rate']) ?></div>
                             </div>
                         </td>
-                        <!-- Nước -->
                         <td class="td-right hide-mobile">
                             <div class="util-row">
                                 <div class="util-amount">💧 <?= fmtMoney((float)$inv['water_fee']) ?></div>
                                 <div class="util-pill"><?= number_format((float)$inv['water_m3'],1,',','.') ?> m³ × <?= fmtMoney((float)$inv['water_rate']) ?></div>
                             </div>
                         </td>
-                        <!-- Phí khác (service + penalty - discount) -->
                         <td class="td-right hide-mobile">
                             <div class="util-row">
                                 <?php if ($inv['service_fee'] > 0): ?>
@@ -391,14 +352,12 @@ td{padding:11px 12px;vertical-align:middle}.td-right{text-align:right}
                                 <?php endif; ?>
                             </div>
                         </td>
-                        <!-- Tổng -->
                         <td class="td-right">
                             <div style="font-weight:700;font-size:14px;white-space:nowrap"><?= fmtMoney((float)$inv['total_amount']) ?></div>
                             <?php if ($remaining > 0): ?>
                             <div style="font-size:10px;color:var(--red);white-space:nowrap">Còn: <?= fmtMoney($remaining) ?></div>
                             <?php endif; ?>
                         </td>
-                        <!-- Thanh toán -->
                         <td class="hide-mobile">
                             <div class="pay-wrap">
                                 <div class="pay-text" style="color:<?= $pct==100 ? 'var(--green)' : ($isOverdue ? 'var(--red)' : 'var(--muted)') ?>">
@@ -416,15 +375,12 @@ td{padding:11px 12px;vertical-align:middle}.td-right{text-align:right}
                                 <?php endif; ?>
                             </div>
                         </td>
-                        <!-- Hạn TT -->
                         <td class="hide-mobile">
                             <div style="font-size:12px;white-space:nowrap;<?= $isOverdue ? 'color:var(--red);font-weight:600' : '' ?>">
                                 <?= $isOverdue ? '⚠ ' : '' ?><?= fmtDate($inv['due_date']) ?>
                             </div>
                         </td>
-                        <!-- Trạng thái -->
                         <td><span class="badge <?= $statusClass ?>"><?= $statusText ?></span></td>
-                        <!-- Thao tác -->
                         <td>
                             <div style="display:flex;gap:6px;flex-wrap:wrap">
                                 <a href="InvoiceFormView.php?invoice_id=<?= $inv['invoice_id'] ?>"
@@ -447,5 +403,3 @@ td{padding:11px 12px;vertical-align:middle}.td-right{text-align:right}
 </main>
 </body>
 </html>
-PHPEOF
-echo "InvoiceView done"

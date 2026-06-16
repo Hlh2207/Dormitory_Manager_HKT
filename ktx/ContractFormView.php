@@ -15,7 +15,6 @@ try {
     die('<p style="color:red">Kết nối DB thất bại: ' . htmlspecialchars($e->getMessage()) . '</p>');
 }
 
-// ---------- CHẾ ĐỘ SỬA ----------
 $contractId = filter_input(INPUT_GET, 'contract_id', FILTER_VALIDATE_INT);
 $contract   = null;
 $isEdit     = false;
@@ -35,7 +34,6 @@ if ($contractId) {
     $isEdit   = (bool)$contract;
 }
 
-// ---------- XỬ LÝ LƯU ----------
 $errors  = [];
 $success = '';
 $dbError = '';
@@ -56,7 +54,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $terms           = trim($_POST['terms']                             ?? '');
     $statusCode      = trim($_POST['status_code']                       ?? 'draft');
 
-    // Validate
     if (!$studentId)   $errors[] = 'Vui lòng chọn sinh viên.';
     if (!$roomId)      $errors[] = 'Vui lòng chọn phòng.';
     if (!$contractCode) $errors[] = 'Mã hợp đồng không được để trống.';
@@ -67,7 +64,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($deposit === false || $deposit < 0)
                        $errors[] = 'Số tiền đặt cọc không hợp lệ (nhập 0 nếu không có cọc).';
 
-    // Nếu monthly_fee để trống → lấy từ room_types
     if ($monthlyFee === false || $monthlyFee <= 0) {
         if ($roomId) {
             $feeStmt = $pdo->prepare("
@@ -116,7 +112,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
         } catch (PDOException $e) {
-            // Hiển thị lỗi DB rõ ràng
             if ($e->getCode() === '23000') {
                 $dbError = 'Mã hợp đồng "' . htmlspecialchars($contractCode) . '" đã tồn tại. Vui lòng dùng mã khác.';
             } else {
@@ -126,13 +121,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// ---------- DROPDOWN: SINH VIÊN (đang học) ----------
 $students = $pdo->query("
     SELECT s.student_id, s.student_code, s.full_name, s.faculty
     FROM students s WHERE s.status_code = 'active' ORDER BY s.full_name
 ")->fetchAll();
 
-// ---------- DROPDOWN: PHÒNG (tất cả phòng kèm trạng thái) ----------
 $rooms = $pdo->query("
     SELECT r.room_id, r.room_number, r.floor, r.status_code AS room_status,
            rt.type_name, rt.price_per_month,
@@ -143,7 +136,6 @@ $rooms = $pdo->query("
     ORDER BY b.building_name, r.floor, r.room_number
 ")->fetchAll();
 
-// ---------- GIÁ TRỊ FORM ----------
 $fStudentId    = $_POST['student_id']           ?? $contract['student_id']           ?? '';
 $fRoomId       = $_POST['room_id']              ?? $contract['room_id']              ?? '';
 $fContractCode = $_POST['contract_code']        ?? $contract['contract_code']        ?? 'HD-' . date('Y') . '-';
@@ -169,7 +161,7 @@ $roomStatusLabel = ['available'=>'Còn trống','full'=>'Đã đầy','maintenan
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-    --bg:#f0f2f5;--card:#fff;--primary:#1d4ed8;--primary-lt:#eff6ff;
+    --bg:#f0f2f5;--card:#fff;--primary:#0ea5a4;--primary-lt:#e0f2f1;
     --text:#1e293b;--muted:#64748b;--border:#e2e8f0;
     --green:#16a34a;--green-lt:#dcfce7;
     --red:#dc2626;--red-lt:#fee2e2;
@@ -184,9 +176,6 @@ nav{margin-left:auto;display:flex;gap:4px}
 nav a{color:#fff;text-decoration:none;padding:6px 14px;border-radius:6px;font-size:13px;opacity:.8;transition:background .15s}
 nav a:hover,nav a.active{background:rgba(255,255,255,.15);opacity:1}
 .page{max-width:860px;margin:0 auto;padding:28px 20px}
-.page-title{font-size:22px;font-weight:700;display:flex;align-items:center;gap:10px;margin-bottom:6px}
-.page-title::before{content:'';display:block;width:4px;height:28px;background:var(--primary);border-radius:2px}
-.page-desc{color:var(--muted);font-size:14px;margin-bottom:24px}
 .breadcrumb{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);margin-bottom:20px}
 .breadcrumb a{color:var(--primary);text-decoration:none}.breadcrumb a:hover{text-decoration:underline}
 .alert{display:flex;align-items:flex-start;gap:10px;padding:12px 16px;border-radius:8px;font-size:14px;margin-bottom:20px;line-height:1.6}
@@ -204,13 +193,13 @@ nav a:hover,nav a.active{background:rgba(255,255,255,.15);opacity:1}
 .form-label{font-size:13px;font-weight:600}.required{color:var(--red);margin-left:2px}
 .form-hint{font-size:11px;color:var(--muted)}
 .form-control{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;color:var(--text);background:#fff;outline:none;transition:border-color .15s,box-shadow .15s;font-family:inherit}
-.form-control:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(29,78,216,.1)}
+.form-control:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(14,165,164,.1)}
 .form-control::placeholder{color:#cbd5e1}
 select.form-control{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px}
 textarea.form-control{resize:vertical;min-height:90px}
 .form-control.is-error{border-color:var(--red)}
-.pfx-wrap{position:relative}.pfx-wrap .pfx{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;font-weight:600;pointer-events:none}
-.pfx-wrap .form-control{padding-left:32px}
+.pfx-wrap{position:relative}.pfx-wrap .pfx{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px;font-weight:600;pointer-events:none}
+.pfx-wrap .form-control{padding-left:48px}
 .check-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:background .15s}
 .check-row:hover{background:#f8fafc}
 .check-row input[type=checkbox]{width:16px;height:16px;accent-color:var(--primary);cursor:pointer;flex-shrink:0}
@@ -219,20 +208,17 @@ textarea.form-control{resize:vertical;min-height:90px}
 .preview-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0}
 .preview-row:not(:last-child){border-bottom:1px solid var(--border)}
 .pkey{color:var(--muted);font-size:12px}.pval{font-weight:600;font-size:13px}
-.edit-banner{background:var(--primary-lt);border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;font-size:13px;color:var(--primary);display:flex;align-items:center;gap:10px;margin-bottom:20px}
+.edit-banner{background:var(--primary-lt);border:1px solid #b2dfdb;border-radius:8px;padding:12px 16px;font-size:13px;color:var(--primary);display:flex;align-items:center;gap:10px;margin-bottom:20px}
 .status-group{display:flex;flex-wrap:wrap;gap:8px}
 .s-radio{display:none}
 .s-label{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:2px solid var(--border);transition:all .15s;background:#fff}
 .s-radio:checked + .s-label{border-color:var(--primary);background:var(--primary-lt);color:var(--primary)}
 .form-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding-top:4px}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 22px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;border:none;text-decoration:none;transition:background .15s}
-.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:#1e40af}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:#0b8483}
 .btn-ghost{background:#f1f5f9;color:var(--muted);border:1px solid var(--border)}.btn-ghost:hover{background:var(--border)}
 .btn-lg{padding:11px 28px;font-size:15px}
 .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700}
-.badge-av{background:var(--green-lt);color:var(--green)}
-.badge-full{background:var(--red-lt);color:var(--red)}
-.badge-other{background:#f1f5f9;color:var(--muted)}
 @media(max-width:640px){nav{display:none}.form-grid-2{grid-template-columns:1fr}.form-actions{flex-direction:column;align-items:stretch}.btn-lg{width:100%;justify-content:center}}
 </style>
 </head>
@@ -240,10 +226,11 @@ textarea.form-control{resize:vertical;min-height:90px}
 <header class="site-header">
     <div><div class="logo">🏢 KTX Campus</div><div class="subtitle">Hệ thống quản lý ký túc xá</div></div>
     <nav>
-        <a href="BuildingListView.php">Tòa nhà</a>
-        <a href="StudentListView.php">Sinh viên</a>
-        <a href="ContractListView.php" class="active">Hợp đồng</a>
-        <a href="#">Hóa đơn</a>
+        <a href="BuildingListView.php" class="<?= basename($_SERVER['PHP_SELF']) == 'BuildingListView.php' || basename($_SERVER['PHP_SELF']) == 'RoomDetailView.php' ? 'active' : '' ?>">Tòa nhà</a>
+        <a href="StudentListView.php"  class="<?= basename($_SERVER['PHP_SELF']) == 'StudentListView.php' || basename($_SERVER['PHP_SELF']) == 'StudentFormView.php' ? 'active' : '' ?>">Sinh viên</a>
+        <a href="ContractListView.php" class="<?= basename($_SERVER['PHP_SELF']) == 'ContractListView.php' || basename($_SERVER['PHP_SELF']) == 'ContractFormView.php' ? 'active' : '' ?>">Hợp đồng</a>
+        <a href="InvoiceView.php"      class="<?= basename($_SERVER['PHP_SELF']) == 'InvoiceView.php' ? 'active' : '' ?>">Hóa đơn</a>
+        <a href="#">Vi phạm</a>
     </nav>
 </header>
 
@@ -285,7 +272,6 @@ textarea.form-control{resize:vertical;min-height:90px}
     <form method="POST" id="contractForm" novalidate>
         <?php if ($isEdit): ?><input type="hidden" name="contract_id" value="<?= $contractId ?>"><?php endif; ?>
 
-        <!-- 1. THÔNG TIN CHUNG -->
         <div class="card">
             <div class="card-header"><span class="icon">📄</span><h2>Thông tin chung</h2></div>
             <div class="card-body">
@@ -307,7 +293,6 @@ textarea.form-control{resize:vertical;min-height:90px}
             </div>
         </div>
 
-        <!-- 2. SINH VIÊN -->
         <div class="card">
             <div class="card-header"><span class="icon">👤</span><h2>Sinh viên</h2></div>
             <div class="card-body">
@@ -337,7 +322,6 @@ textarea.form-control{resize:vertical;min-height:90px}
             </div>
         </div>
 
-        <!-- 3. PHÒNG -->
         <div class="card">
             <div class="card-header"><span class="icon">🛏</span><h2>Phòng thuê</h2></div>
             <div class="card-body">
@@ -365,7 +349,7 @@ textarea.form-control{resize:vertical;min-height:90px}
                             ?>
                             <option value="<?= $r['room_id'] ?>"
                                     data-type="<?= htmlspecialchars($r['type_name']) ?>"
-                                    data-price="<?= number_format((float)$r['price_per_month'], 0, ',', '.') ?>"
+                                    data-price="<?= number_format((float)$r['price_per_month'], 0, ',', '.') . ' VND' ?>"
                                     data-price-raw="<?= (float)$r['price_per_month'] ?>"
                                     data-building="<?= htmlspecialchars($r['building_name']) ?>"
                                     data-floor="Tầng <?= $r['floor'] ?>"
@@ -387,10 +371,10 @@ textarea.form-control{resize:vertical;min-height:90px}
 
                     <div class="form-group">
                         <label class="form-label" for="monthly_fee_snapshot">
-                            Giá thuê chốt trong HĐ (VNĐ) <span class="required">*</span>
+                            Giá thuê chốt trong HĐ (VND) <span class="required">*</span>
                         </label>
                         <div class="pfx-wrap">
-                            <span class="pfx">₫</span>
+                            <span class="pfx">VND</span>
                             <input type="number" name="monthly_fee_snapshot" id="monthly_fee_snapshot"
                                    class="form-control <?= in_array('Giá thuê tháng không hợp lệ.', $errors) ? 'is-error' : '' ?>"
                                    placeholder="0" min="0" step="50000"
@@ -402,7 +386,6 @@ textarea.form-control{resize:vertical;min-height:90px}
             </div>
         </div>
 
-        <!-- 4. THỜI HẠN & ĐẶT CỌC -->
         <div class="card">
             <div class="card-header"><span class="icon">📅</span><h2>Thời hạn & Đặt cọc</h2></div>
             <div class="card-body">
@@ -424,9 +407,9 @@ textarea.form-control{resize:vertical;min-height:90px}
                     </div>
                     <div class="form-grid form-grid-2">
                         <div class="form-group">
-                            <label class="form-label" for="deposit_amount">Tiền đặt cọc (VNĐ) <span class="required">*</span></label>
+                            <label class="form-label" for="deposit_amount">Tiền đặt cọc (VND) <span class="required">*</span></label>
                             <div class="pfx-wrap">
-                                <span class="pfx">₫</span>
+                                <span class="pfx">VND</span>
                                 <input type="number" name="deposit_amount" id="deposit_amount"
                                        class="form-control <?= in_array('Số tiền đặt cọc không hợp lệ (nhập 0 nếu không có cọc).', $errors) ? 'is-error' : '' ?>"
                                        placeholder="0" min="0" step="50000"
@@ -453,7 +436,6 @@ textarea.form-control{resize:vertical;min-height:90px}
             </div>
         </div>
 
-        <!-- 5. ĐIỀU KHOẢN & TRẠNG THÁI -->
         <div class="card">
             <div class="card-header"><span class="icon">📝</span><h2>Điều khoản & Trạng thái</h2></div>
             <div class="card-body">
@@ -477,7 +459,6 @@ textarea.form-control{resize:vertical;min-height:90px}
             </div>
         </div>
 
-        <!-- ACTIONS -->
         <div class="form-actions">
             <button type="submit" class="btn btn-primary btn-lg">
                 <?= $isEdit ? '💾 Lưu thay đổi' : '✅ Tạo hợp đồng' ?>
@@ -504,12 +485,11 @@ function previewRoom(sel) {
     document.getElementById('pvBuilding').textContent = opt.dataset.building || '—';
     document.getElementById('pvFloor').textContent    = opt.dataset.floor    || '—';
     document.getElementById('pvType').textContent     = opt.dataset.type     || '—';
-    document.getElementById('pvPrice').textContent    = opt.dataset.price ? opt.dataset.price + ' ₫' : '—';
+    document.getElementById('pvPrice').textContent    = opt.dataset.price ? opt.dataset.price : '—';
     const st = opt.dataset.status || '';
     const stMap = {available:'✅ Còn trống', full:'🔴 Đã đầy', maintenance:'🔧 Bảo trì'};
     document.getElementById('pvStatus').textContent = stMap[st] || st || '—';
     document.getElementById('roomPreview').classList.toggle('visible', !!sel.value);
-    // Tự điền giá nếu chưa có
     const fee = document.getElementById('monthly_fee_snapshot');
     if (sel.value && opt.dataset.priceRaw && (!fee.value || fee.value === '0')) {
         fee.value = opt.dataset.priceRaw;

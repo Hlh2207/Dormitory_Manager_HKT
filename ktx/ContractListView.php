@@ -15,7 +15,6 @@ try {
     die('<p style="color:red">Kết nối DB thất bại: ' . htmlspecialchars($e->getMessage()) . '</p>');
 }
 
-// ---------- XỬ LÝ XÓA ----------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete') {
     $delId = filter_input(INPUT_POST, 'contract_id', FILTER_VALIDATE_INT);
     if ($delId) {
@@ -25,13 +24,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit;
 }
 
-// ---------- THÔNG BÁO TẠO MỚI THÀNH CÔNG ----------
 $justCreated = isset($_GET['created']) && $_GET['created'] === '1';
-
-// ---------- TÌM KIẾM ----------
 $search = trim($_GET['search'] ?? '');
 
-// ---------- QUERY DANH SÁCH ----------
 $sql = "
     SELECT
         c.contract_id,
@@ -70,7 +65,6 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $contracts = $stmt->fetchAll();
 
-// ---------- THỐNG KÊ ----------
 $total      = count($contracts);
 $active     = count(array_filter($contracts, fn($c) => $c['status_code'] === 'active'));
 $draft      = count(array_filter($contracts, fn($c) => $c['status_code'] === 'draft'));
@@ -87,7 +81,7 @@ function statusLabel(string $c): array {
     };
 }
 function fmtMoney(float $n): string {
-    return number_format($n, 0, ',', '.') . ' ₫';
+    return number_format($n, 0, ',', '.') . ' VND';
 }
 function fmtDate(?string $d): string {
     if (!$d) return '—';
@@ -104,7 +98,7 @@ function fmtDate(?string $d): string {
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-    --bg:#f0f2f5;--card:#fff;--primary:#1d4ed8;--primary-lt:#eff6ff;
+    --bg:#f0f2f5;--card:#fff;--primary:#0ea5a4;--primary-lt:#e0f2f1;
     --text:#1e293b;--muted:#64748b;--border:#e2e8f0;
     --green:#16a34a;--green-lt:#dcfce7;
     --red:#dc2626;--red-lt:#fee2e2;
@@ -122,28 +116,24 @@ nav a:hover,nav a.active{background:rgba(255,255,255,.15);opacity:1}
 .page-title{font-size:22px;font-weight:700;display:flex;align-items:center;gap:10px;margin-bottom:6px}
 .page-title::before{content:'';display:block;width:4px;height:28px;background:var(--primary);border-radius:2px}
 .page-desc{color:var(--muted);font-size:14px;margin-bottom:24px}
-/* ALERT */
 .alert{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:8px;font-size:14px;margin-bottom:20px}
 .alert-success{background:var(--green-lt);color:var(--green);border:1px solid #86efac}
-/* STATS */
 .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:14px;margin-bottom:24px}
 .stat-card{background:var(--card);border-radius:var(--radius);padding:16px 20px;box-shadow:var(--shadow);border-left:4px solid var(--primary)}
 .stat-card.green{border-color:var(--green)}.stat-card.yellow{border-color:var(--yellow)}
 .stat-card.blue{border-color:var(--blue)}.stat-card.red{border-color:var(--red)}
-.stat-value{font-size:26px;font-weight:700}.stat-label{font-size:12px;color:var(--muted);margin-top:3px}
-/* TOOLBAR */
+$current_occupancy.stat-value{font-size:26px;font-weight:700}.stat-label{font-size:12px;color:var(--muted);margin-top:3px}
 .toolbar{display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
 .search-box{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 14px;flex:1;min-width:200px;max-width:400px;box-shadow:var(--shadow)}
 .search-box input{border:none;outline:none;font-size:14px;width:100%;background:transparent;color:var(--text)}
 .search-box span{color:var(--muted)}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;border:none;text-decoration:none;transition:background .15s}
-.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:#1e40af}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:#0b8483}
 .btn-danger{background:var(--red-lt);color:var(--red);border:1px solid #fca5a5}.btn-danger:hover{background:#fee2e2}
-.btn-edit{background:var(--primary-lt);color:var(--primary);border:1px solid #bfdbfe}.btn-edit:hover{background:#dbeafe}
+.btn-edit{background:var(--primary-lt);color:var(--primary);border:1px solid #b2dfdb}.btn-edit:hover{background:#b2dfdb}
 .btn-sm{padding:5px 11px;font-size:12px;border-radius:6px}
-/* TABLE */
 .table-wrap{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
-.table-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.table-header {padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
 .table-header h2{font-size:15px;font-weight:600}
 .table-responsive{overflow-x:auto;-webkit-overflow-scrolling:touch}
 table{width:100%;border-collapse:collapse;font-size:14px}
@@ -152,22 +142,17 @@ tbody tr{border-bottom:1px solid var(--border);transition:background .12s}
 tbody tr:last-child{border-bottom:none}
 tbody tr:hover{background:#f8fafc}
 td{padding:12px 14px;vertical-align:middle}
-/* BADGE */
 .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
 .badge-green{background:var(--green-lt);color:var(--green)}
 .badge-blue{background:var(--blue-lt);color:var(--blue)}
 .badge-yellow{background:var(--yellow-lt);color:var(--yellow)}
 .badge-red{background:var(--red-lt);color:var(--red)}
 .badge-gray{background:#f1f5f9;color:var(--muted)}
-/* AVATAR */
 .avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0}
-/* EMPTY */
 .empty{text-align:center;padding:60px 20px;color:var(--muted)}
 .empty-icon{font-size:40px;margin-bottom:12px}
-/* DEPOSIT CHECK */
 .dep-yes{color:var(--green);font-weight:700}
 .dep-no{color:var(--muted)}
-/* RESPONSIVE */
 @media(max-width:768px){nav{display:none}.hide-mobile{display:none}}
 @media(max-width:480px){.stats-row{grid-template-columns:1fr 1fr}}
 </style>
@@ -177,10 +162,11 @@ td{padding:12px 14px;vertical-align:middle}
 <header class="site-header">
     <div><div class="logo">🏢 KTX Campus</div><div class="subtitle">Hệ thống quản lý ký túc xá</div></div>
     <nav>
-        <a href="BuildingListView.php">Tòa nhà</a>
-        <a href="StudentListView.php">Sinh viên</a>
-        <a href="ContractListView.php" class="active">Hợp đồng</a>
-        <a href="#">Hóa đơn</a>
+        <a href="BuildingListView.php" class="<?= basename($_SERVER['PHP_SELF']) == 'BuildingListView.php' || basename($_SERVER['PHP_SELF']) == 'RoomDetailView.php' ? 'active' : '' ?>">Tòa nhà</a>
+        <a href="StudentListView.php"  class="<?= basename($_SERVER['PHP_SELF']) == 'StudentListView.php' || basename($_SERVER['PHP_SELF']) == 'StudentFormView.php' ? 'active' : '' ?>">Sinh viên</a>
+        <a href="ContractListView.php" class="<?= basename($_SERVER['PHP_SELF']) == 'ContractListView.php' || basename($_SERVER['PHP_SELF']) == 'ContractFormView.php' ? 'active' : '' ?>">Hợp đồng</a>
+        <a href="InvoiceView.php"      class="<?= basename($_SERVER['PHP_SELF']) == 'InvoiceView.php' ? 'active' : '' ?>">Hóa đơn</a>
+        <a href="#">Vi phạm</a>
     </nav>
 </header>
 
@@ -192,7 +178,6 @@ td{padding:12px 14px;vertical-align:middle}
     <div class="alert alert-success">✔ Tạo hợp đồng mới thành công!</div>
     <?php endif; ?>
 
-    <!-- STATS -->
     <div class="stats-row">
         <div class="stat-card">
             <div class="stat-value"><?= $total ?></div>
@@ -216,7 +201,6 @@ td{padding:12px 14px;vertical-align:middle}
         </div>
     </div>
 
-    <!-- TOOLBAR -->
     <div class="toolbar">
         <form method="GET" style="display:contents">
             <div class="search-box">
@@ -233,7 +217,6 @@ td{padding:12px 14px;vertical-align:middle}
         <a href="ContractFormView.php" class="btn btn-primary" style="margin-left:auto">＋ Thêm hợp đồng</a>
     </div>
 
-    <!-- TABLE -->
     <div class="table-wrap">
         <div class="table-header">
             <h2>📄 Hợp đồng
@@ -273,7 +256,6 @@ td{padding:12px 14px;vertical-align:middle}
                         $color    = $colors[$ct['student_id'] % count($colors)];
                     ?>
                     <tr>
-                        <!-- Sinh viên -->
                         <td>
                             <div style="display:flex;align-items:center;gap:10px">
                                 <div class="avatar" style="background:<?= $color ?>"><?= $initials ?></div>
@@ -283,7 +265,6 @@ td{padding:12px 14px;vertical-align:middle}
                                 </div>
                             </div>
                         </td>
-                        <!-- Mã HĐ -->
                         <td>
                             <code style="font-size:12px;background:#f1f5f9;padding:2px 6px;border-radius:4px;white-space:nowrap">
                                 <?= htmlspecialchars($ct['contract_code']) ?>
@@ -292,24 +273,20 @@ td{padding:12px 14px;vertical-align:middle}
                             <div style="font-size:11px;color:var(--muted);margin-top:3px">Ký: <?= fmtDate($ct['signed_date']) ?></div>
                             <?php endif; ?>
                         </td>
-                        <!-- Phòng -->
                         <td class="hide-mobile">
                             <div style="font-weight:600">Phòng <?= htmlspecialchars($ct['room_number']) ?></div>
                             <div style="font-size:11px;color:var(--muted)"><?= htmlspecialchars($ct['building_name']) ?> · <?= htmlspecialchars($ct['type_name']) ?></div>
                         </td>
-                        <!-- Thời hạn -->
                         <td class="hide-mobile">
                             <div style="font-size:13px;white-space:nowrap"><?= fmtDate($ct['start_date']) ?></div>
                             <div style="font-size:11px;color:var(--muted)">→ <?= fmtDate($ct['end_date']) ?></div>
                         </td>
-                        <!-- Tiền thuê -->
                         <td class="hide-mobile">
                             <div style="font-size:13px;font-weight:600;white-space:nowrap">
                                 <?= fmtMoney((float)$ct['monthly_fee_snapshot']) ?>
                             </div>
                             <div style="font-size:11px;color:var(--muted)">/tháng</div>
                         </td>
-                        <!-- Đặt cọc -->
                         <td class="hide-mobile">
                             <div style="font-size:13px;white-space:nowrap"><?= fmtMoney((float)$ct['deposit_amount']) ?></div>
                             <div style="font-size:11px;margin-top:2px">
@@ -320,9 +297,7 @@ td{padding:12px 14px;vertical-align:middle}
                                 <?php endif; ?>
                             </div>
                         </td>
-                        <!-- Trạng thái -->
                         <td><span class="badge <?= $statusClass ?>"><?= $statusText ?></span></td>
-                        <!-- Thao tác -->
                         <td>
                             <div style="display:flex;gap:6px;flex-wrap:wrap">
                                 <a href="ContractFormView.php?contract_id=<?= $ct['contract_id'] ?>"

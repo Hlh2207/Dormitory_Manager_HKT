@@ -6,7 +6,7 @@
 
 // ---------- 1. KẾT NỐI DATABASE ----------
 $host   = 'localhost';
-$db     = 'campus_final';   // đổi tên DB nếu khác
+$db     = 'campus_final';   
 $user   = 'root';
 $pass   = '';
 $charset = 'utf8mb4';
@@ -26,7 +26,6 @@ try {
 }
 
 // ---------- 2. QUERY DỮ LIỆU ----------
-// Lấy danh sách tòa nhà + thống kê phòng theo trạng thái
 $sql = "
     SELECT
         b.building_id,
@@ -38,7 +37,6 @@ $sql = "
         b.manager_name,
         b.manager_phone,
         b.description,
-        -- Đếm phòng theo từng trạng thái
         COUNT(r.room_id)                                                  AS actual_rooms,
         SUM(CASE WHEN r.status_code = 'available'   THEN 1 ELSE 0 END)   AS rooms_available,
         SUM(CASE WHEN r.status_code = 'full'         THEN 1 ELSE 0 END)   AS rooms_full,
@@ -86,8 +84,8 @@ function genderClass(string $type): string {
 :root {
     --bg:        #f0f2f5;
     --card:      #ffffff;
-    --primary:   #1d4ed8;
-    --primary-lt:#eff6ff;
+    --primary:   #0ea5a4;
+    --primary-lt:#e0f2f1;
     --text:      #1e293b;
     --muted:     #64748b;
     --border:    #e2e8f0;
@@ -246,7 +244,7 @@ td { padding: 13px 16px; vertical-align: middle; }
     font-weight: 600; text-decoration: none;
     transition: background .15s;
 }
-.btn-detail:hover { background: #dbeafe; }
+.btn-detail:hover { background: #b2dfdb; }
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 640px) {
@@ -260,16 +258,16 @@ td { padding: 13px 16px; vertical-align: middle; }
 </head>
 <body>
 
-<!-- HEADER -->
 <header class="site-header">
     <div>
         <div class="logo">🏢 KTX Campus</div>
         <div class="subtitle">Hệ thống quản lý ký túc xá</div>
     </div>
     <nav>
-        <a href="BuildingListView.php" class="active">Tòa nhà</a>
-        <a href="#">Sinh viên</a>
-        <a href="#">Hóa đơn</a>
+        <a href="BuildingListView.php" class="<?= basename($_SERVER['PHP_SELF']) == 'BuildingListView.php' || basename($_SERVER['PHP_SELF']) == 'RoomDetailView.php' ? 'active' : '' ?>">Tòa nhà</a>
+        <a href="StudentListView.php"  class="<?= basename($_SERVER['PHP_SELF']) == 'StudentListView.php' || basename($_SERVER['PHP_SELF']) == 'StudentFormView.php' ? 'active' : '' ?>">Sinh viên</a>
+        <a href="ContractListView.php" class="<?= basename($_SERVER['PHP_SELF']) == 'ContractListView.php' || basename($_SERVER['PHP_SELF']) == 'ContractFormView.php' ? 'active' : '' ?>">Hợp đồng</a>
+        <a href="InvoiceView.php"      class="<?= basename($_SERVER['PHP_SELF']) == 'InvoiceView.php' ? 'active' : '' ?>">Hóa đơn</a>
         <a href="#">Vi phạm</a>
     </nav>
 </header>
@@ -279,7 +277,6 @@ td { padding: 13px 16px; vertical-align: middle; }
     <p class="page-desc">Tổng quan các tòa nhà trong khuôn viên ký túc xá — nhấn "Xem phòng" để xem chi tiết phòng.</p>
 
     <?php
-    // Tính tổng thống kê
     $totalBuildings   = count($buildings);
     $totalRooms       = array_sum(array_column($buildings, 'actual_rooms'));
     $totalAvailable   = array_sum(array_column($buildings, 'rooms_available'));
@@ -287,7 +284,6 @@ td { padding: 13px 16px; vertical-align: middle; }
     $totalMaintenance = array_sum(array_column($buildings, 'rooms_maintenance'));
     ?>
 
-    <!-- SUMMARY CARDS -->
     <div class="summary-row">
         <div class="stat-card">
             <div class="stat-value"><?= $totalBuildings ?></div>
@@ -311,7 +307,6 @@ td { padding: 13px 16px; vertical-align: middle; }
         </div>
     </div>
 
-    <!-- TABLE -->
     <div class="table-wrap">
         <div class="table-header">
             <h2>📋 Tất cả tòa nhà (<?= $totalBuildings ?>)</h2>
@@ -338,7 +333,6 @@ td { padding: 13px 16px; vertical-align: middle; }
                         $fillClass = $fullPct >= 80 ? 'high' : ($fullPct >= 50 ? 'mid' : '');
                     ?>
                     <tr>
-                        <!-- Mã + Tên -->
                         <td>
                             <div style="font-weight:600;font-size:15px">
                                 <?= htmlspecialchars($b['building_name']) ?>
@@ -348,18 +342,12 @@ td { padding: 13px 16px; vertical-align: middle; }
                                 · <?= $b['actual_rooms'] ?> phòng thực tế
                             </div>
                         </td>
-
-                        <!-- Giới tính -->
                         <td>
                             <span class="badge <?= genderClass($b['gender_type']) ?>">
                                 <?= genderLabel($b['gender_type']) ?>
                             </span>
                         </td>
-
-                        <!-- Số tầng -->
                         <td style="color:var(--muted)"><?= $b['total_floors'] ?> tầng</td>
-
-                        <!-- Phòng theo trạng thái + thanh tiến độ -->
                         <td>
                             <div class="room-bar">
                                 <?php if ($b['rooms_available'] > 0): ?>
@@ -379,14 +367,10 @@ td { padding: 13px 16px; vertical-align: middle; }
                                 <span style="font-size:11px;color:var(--muted)"><?= $fullPct ?>% đầy</span>
                             </div>
                         </td>
-
-                        <!-- Quản lý -->
                         <td>
                             <div style="font-size:13px"><?= htmlspecialchars($b['manager_name'] ?? '—') ?></div>
                             <div style="font-size:12px;color:var(--muted)"><?= htmlspecialchars($b['manager_phone'] ?? '') ?></div>
                         </td>
-
-                        <!-- Nút xem chi tiết -->
                         <td>
                             <a class="btn-detail"
                                href="RoomDetailView.php?building_id=<?= $b['building_id'] ?>">
@@ -401,6 +385,5 @@ td { padding: 13px 16px; vertical-align: middle; }
         </div>
     </div>
 </main>
-
 </body>
 </html>
