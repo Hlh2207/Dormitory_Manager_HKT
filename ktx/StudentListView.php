@@ -1,7 +1,8 @@
 <?php
 // ============================================================
 //  StudentListView.php — Student List
-//  Last updated: English UI version
+//  Connects to: students, users
+//  Task 6: All queries use PDO Prepared Statements
 // ============================================================
 
 $host = 'localhost'; $db = 'campus_final'; $user = 'root'; $pass = ''; $charset = 'utf8mb4';
@@ -30,6 +31,8 @@ if (isset($_SESSION['delete_message'])) {
     unset($_SESSION['delete_message']);
 }
 
+// Task 6: search input goes through StudentController, which uses
+// $stmt->execute([':s1' => $like, ...]) — never concatenated into SQL.
 $search = trim($_GET['search'] ?? '');
 $students = $controller->getAllStudents($search);
 
@@ -50,7 +53,7 @@ function statusLabel(string $c): array {
     };
 }
 
-$pageTitle = "Student List";
+$pageTitle = "Student Management";
 include 'header.php';
 ?>
 
@@ -65,25 +68,38 @@ include 'header.php';
     <?php endif; ?>
 
     <div class="stats-row">
-        <div class="stat-card"><div class="stat-value"><?= $total ?></div><div class="stat-label">Total Students</div></div>
-        <div class="stat-card blue"><div class="stat-value"><?= $male ?></div><div class="stat-label">Male</div></div>
-        <div class="stat-card pink"><div class="stat-value"><?= $female ?></div><div class="stat-label">Female</div></div>
+        <div class="stat-card">
+            <div class="stat-value"><?= $total ?></div>
+            <div class="stat-label">Total Students</div>
+        </div>
+        <div class="stat-card blue">
+            <div class="stat-value"><?= $male ?></div>
+            <div class="stat-label">Male</div>
+        </div>
+        <div class="stat-card pink">
+            <div class="stat-value"><?= $female ?></div>
+            <div class="stat-label">Female</div>
+        </div>
     </div>
 
     <div class="toolbar">
         <form method="GET" style="display:contents">
             <div class="search-box">
-                <input type="text" name="search" placeholder="Search Name, ID, Email, Phone..." value="<?= htmlspecialchars($search) ?>">
+                <input type="text" name="search"
+                       placeholder="Search by Name, Student ID, Email, Phone..."
+                       value="<?= htmlspecialchars($search) ?>">
             </div>
             <button type="submit" class="btn btn-primary">Search</button>
-            <?php if ($search): ?><a href="StudentListView.php" class="btn btn-ghost">Clear Filter</a><?php endif; ?>
+            <?php if ($search): ?>
+            <a href="StudentListView.php" class="btn btn-ghost">Clear Filter</a>
+            <?php endif; ?>
         </form>
-        <a href="StudentFormView.php" class="btn btn-primary" style="margin-left:auto">＋ Add Student</a>
+        <a href="StudentFormView.php" class="btn btn-primary" style="margin-left:auto">Add Student</a>
     </div>
 
     <div class="table-wrap">
         <div class="table-header">
-            <h2>👥 Students <?= $search ? '(results: ' . htmlspecialchars($search) . ')' : '' ?> (<?= $total ?>)</h2>
+            <h2>Students <?= $search ? '(results: "' . htmlspecialchars($search) . '")' : '' ?> (<?= $total ?>)</h2>
         </div>
         <div class="table-responsive">
             <table>
@@ -135,11 +151,11 @@ include 'header.php';
                         <td class="hide-mobile"><span class="badge <?= $statusClass ?>"><?= $statusText ?></span></td>
                         <td>
                             <div style="display:flex;gap:6px;flex-wrap:wrap">
-                                <a href="StudentFormView.php?student_id=<?= $sv['student_id'] ?>" class="btn btn-edit btn-sm">✏ Edit</a>
+                                <a href="StudentFormView.php?student_id=<?= $sv['student_id'] ?>" class="btn btn-edit btn-sm">Edit</a>
                                 <form method="POST" onsubmit="return confirm('Delete student <?= htmlspecialchars(addslashes($sv['full_name'])) ?>?')">
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="student_id" value="<?= $sv['student_id'] ?>">
-                                    <button type="submit" class="btn btn-danger btn-sm">🗑 Del</button>
+                                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                                 </form>
                             </div>
                         </td>
