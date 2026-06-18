@@ -1,6 +1,7 @@
 <?php
 // ============================================================
 //  StudentListView.php — Student List
+//  Last updated: English UI version
 // ============================================================
 
 $host = 'localhost'; $db = 'campus_final'; $user = 'root'; $pass = ''; $charset = 'utf8mb4';
