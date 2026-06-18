@@ -187,7 +187,7 @@ function showModal(data) {
         ['Currently living', data.current_occupancy + ' people'],
         ['Empty Beds',       data.empty_beds + ' beds'],
         ['Area',             data.area_m2 ? data.area_m2 + ' m²' : '—'],
-        ['Price/Month',      parseInt(data.price_per_month).toLocaleString('vi-VN') + ' VND'],
+        ['Price/Month',      parseInt(data.price_per_month).toLocaleString('en-US') + ' VND'],
         ['Status',           `<span style="color:${color};font-weight:700">${data.status_label}</span>`],
         ['Notes',            data.notes || '—'],
     ];

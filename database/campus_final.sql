@@ -11,7 +11,7 @@
 --    [e] Thay ENUM status → bảng lookup statuses (mở rộng không cần ALTER)
 --    [f] image_url → lưu path/URL Cloud Storage (có thêm cột storage_provider)
 -- ============================================================
-
+ALTER DATABASE campus_dormitory
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
