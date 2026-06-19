@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $updateStmt->execute(['user_id' => $userAccount['user_id']]);
 
                     // Điều hướng về trang chủ/Dashboard dựa vào quyền
-                    header("Location: BuildingListView.php");
+                    header("Location: index.php");
                     exit();
                 } else {
                     $errorMsg = "Invalid username or password.";
