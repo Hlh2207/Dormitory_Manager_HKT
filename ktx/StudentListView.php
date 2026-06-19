@@ -3,6 +3,7 @@
 //  StudentListView.php — Student List
 //  Connects to: students, users
 //  Task 6: All queries use PDO Prepared Statements
+// Hue
 // ============================================================
 
 $host = 'localhost'; $db = 'campus_final'; $user = 'root'; $pass = ''; $charset = 'utf8mb4';
