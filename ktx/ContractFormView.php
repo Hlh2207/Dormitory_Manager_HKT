@@ -3,6 +3,17 @@
 //  ContractFormView.php — Create / Edit Contract
 // ============================================================
 
+// ---------- 1. BẢO MẬT & SESSION (Đã thêm) ----------
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+// Chặn người dùng chưa đăng nhập
+if (!isset($_SESSION['user_id'])) {
+    header("Location: LoginView.php");
+    exit();
+}
+
+// ---------- 2. KẾT NỐI DATABASE ----------
 $host = 'localhost'; $db = 'campus_final'; $user = 'root'; $pass = ''; $charset = 'utf8mb4';
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$db;charset=$charset", $user, $pass, [
@@ -14,6 +25,7 @@ try {
     die('<p style="color:red">DB Connection Failed: ' . htmlspecialchars($e->getMessage()) . '</p>');
 }
 
+// ---------- 3. XỬ LÝ LOGIC ----------
 $contractId = filter_input(INPUT_GET, 'contract_id', FILTER_VALIDATE_INT);
 $contract   = null;
 $isEdit     = false;
@@ -124,6 +136,7 @@ if ($isEdit) {
     $statusOptions['terminated'] = 'Terminated';
 }
 
+// ---------- 4. GỌI HEADER CHUNG ----------
 $pageTitle = $isEdit ? 'Edit Contract' : 'New Contract';
 include 'header.php';
 ?>
@@ -319,5 +332,9 @@ function calcDuration() {
 
 window.addEventListener('DOMContentLoaded', () => { filterRooms(); calcDuration(); });
 </script>
+
+<?php 
+
+?>
 </body>
 </html>

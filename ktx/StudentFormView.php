@@ -3,8 +3,19 @@
 //  StudentFormView.php — Add / Edit Student Form
 // ============================================================
 
+// ---------- 1. BẢO MẬT & SESSION (Đã thêm) ----------
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+// Chặn người dùng chưa đăng nhập
+if (!isset($_SESSION['user_id'])) {
+    header("Location: LoginView.php");
+    exit();
+}
+
 require_once __DIR__ . '/Validator.php';
 
+// ---------- 2. KẾT NỐI DATABASE ----------
 $host = 'localhost'; $db = 'campus_final'; $user = 'root'; $pass = ''; $charset = 'utf8mb4';
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$db;charset=$charset", $user, $pass, [
@@ -12,6 +23,7 @@ try {
     ]);
 } catch (PDOException $e) { die('<p style="color:red">DB Connection Failed: ' . htmlspecialchars($e->getMessage()) . '</p>'); }
 
+// ---------- 3. XỬ LÝ LOGIC ----------
 $studentId = filter_input(INPUT_GET, 'student_id', FILTER_VALIDATE_INT) ?: filter_input(INPUT_POST, 'student_id', FILTER_VALIDATE_INT);
 $isEdit    = (bool)$studentId;
 
@@ -83,6 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save'])) {
 
 function val(string $key, array $old): string { return htmlspecialchars($_POST[$key] ?? $old[$key] ?? ''); }
 
+// ---------- 4. GỌI HEADER CHUNG ----------
 $pageTitle = $isEdit ? 'Edit Student Profile' : 'Add New Student';
 include 'header.php';
 ?>
@@ -216,5 +229,6 @@ include 'header.php';
         </div>
     </form>
 </main>
-</body>
-</html>
+
+<?php 
+?>

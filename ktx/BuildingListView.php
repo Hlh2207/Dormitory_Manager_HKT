@@ -4,7 +4,17 @@
 //  Connects to: buildings, rooms
 // ============================================================
 
-// ---------- 1. DATABASE CONNECTION ----------
+// ---------- 1. BẢO MẬT & SESSION (Thêm mới) ----------
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+// Chặn người lạ chưa đăng nhập
+if (!isset($_SESSION['user_id'])) {
+    header("Location: LoginView.php");
+    exit();
+}
+
+// ---------- 2. DATABASE CONNECTION ----------
 $host   = 'localhost';
 $db     = 'campus_final';   
 $user   = 'root';
@@ -25,7 +35,7 @@ try {
     die('<p style="color:red">DB Connection Failed: ' . htmlspecialchars($e->getMessage()) . '</p>');
 }
 
-// ---------- 2. QUERY DATA ----------
+// ---------- 3. QUERY DATA ----------
 $sql = "
     SELECT
         b.building_id,
@@ -38,7 +48,7 @@ $sql = "
         b.manager_phone,
         b.description,
         COUNT(r.room_id)                                                  AS actual_rooms,
-        SUM(CASE WHEN r.status_code = 'available'   THEN 1 ELSE 0 END)   AS rooms_available,
+        SUM(CASE WHEN r.status_code = 'available'   THEN 1 ELSE 0 END)    AS rooms_available,
         SUM(CASE WHEN r.status_code = 'full'         THEN 1 ELSE 0 END)   AS rooms_full,
         SUM(CASE WHEN r.status_code = 'maintenance'  THEN 1 ELSE 0 END)   AS rooms_maintenance
     FROM buildings b
@@ -52,7 +62,7 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute();
 $buildings = $stmt->fetchAll();
 
-// ---------- 3. UTILITY FUNCTIONS ----------
+// ---------- 4. UTILITY FUNCTIONS ----------
 function genderLabel(string $type): string {
     return match($type) {
         'male'   => '♂ Male',
@@ -71,7 +81,7 @@ function genderClass(string $type): string {
     };
 }
 
-// Khai báo tiêu đề trang trước khi include header
+// ---------- 5. GỌI GIAO DIỆN CHUNG (HEADER) ----------
 $pageTitle = "Building Management";
 include 'header.php'; 
 ?>
@@ -189,5 +199,8 @@ include 'header.php';
         </div>
     </div>
 </main>
+
+<?php 
+?>
 </body>
 </html>
