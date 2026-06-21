@@ -20,15 +20,31 @@ $building = $stmtB->fetch();
 
 if (!$building) die('<p style="color:red">Building not found.</p>');
 
+// --- BẢN VÁ LỖI LOGIC (BUG FIX) ---
+// 1. Thêm Subquery đếm số lượng hợp đồng active thực tế trong bảng contracts (actual_occupancy)
 $stmtR = $pdo->prepare("
-    SELECT r.room_id, r.room_number, r.floor, r.current_occupancy, r.status_code, r.notes,
+    SELECT r.room_id, r.room_number, r.floor, r.status_code AS db_status, r.notes,
            rt.type_id, rt.type_name, rt.capacity, rt.price_per_month, rt.area_m2,
-           (rt.capacity - r.current_occupancy) AS empty_beds
+           (SELECT COUNT(*) FROM contracts c WHERE c.room_id = r.room_id AND c.status_code = 'active') AS actual_occupancy
     FROM rooms r JOIN room_types rt ON rt.type_id = r.type_id
     WHERE r.building_id = :bid ORDER BY r.floor ASC, r.room_number ASC
 ");
 $stmtR->execute([':bid' => $buildingId]);
 $rooms = $stmtR->fetchAll();
+
+// 2. Ghi đè tự động dữ liệu hiển thị bằng số lượng thực tế
+foreach ($rooms as &$r) {
+    $r['current_occupancy'] = (int)$r['actual_occupancy'];
+    $r['empty_beds'] = max(0, (int)$r['capacity'] - $r['current_occupancy']);
+    
+    // Nếu phòng không nằm trong diện bảo trì / đóng cửa, tự động cập nhật lại status (Full / Available)
+    if ($r['db_status'] !== 'maintenance' && $r['db_status'] !== 'closed') {
+        $r['status_code'] = ($r['current_occupancy'] >= $r['capacity']) ? 'full' : 'available';
+    } else {
+        $r['status_code'] = $r['db_status'];
+    }
+}
+unset($r); // Dọn tham chiếu
 
 $byFloor = []; foreach ($rooms as $room) $byFloor[$room['floor']][] = $room; ksort($byFloor);
 
@@ -40,7 +56,7 @@ $maint     = count(array_filter($rooms, fn($r) => $r['status_code'] === 'mainten
 function statusInfo(string $code): array {
     return match($code) {
         'available'   => ['class' => 'room-available', 'label' => 'Available'],
-        'full'        => ['class' => 'room-full',      'label' => 'Full'],
+'full'        => ['class' => 'room-full',      'label' => 'Full'],
         'maintenance' => ['class' => 'room-maint',     'label' => 'Maintenance'],
         'closed'      => ['class' => 'room-closed',    'label' => 'Closed'],
         default       => ['class' => 'room-unknown',   'label' => $code],
@@ -94,7 +110,7 @@ include 'header.php';
 
         <?php foreach ($byFloor as $floor => $floorRooms): ?>
         <div style="margin-bottom: 28px;">
-            <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;padding:6px 12px;background:var(--card);border-radius:8px;display:inline-block;margin-bottom:12px;box-shadow:var(--shadow);">
+<div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;padding:6px 12px;background:var(--card);border-radius:8px;display:inline-block;margin-bottom:12px;box-shadow:var(--shadow);">
                 Floor <?= $floor ?> — <?= count($floorRooms) ?> rooms
             </div>
 
@@ -131,7 +147,7 @@ include 'header.php';
                     <div style="font-size:20px;font-weight:800;line-height:1;margin-bottom:6px;color:<?= $txColor ?>;">
                         <?= htmlspecialchars($room['room_number']) ?>
                     </div>
-                    <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">
+<div style="font-size:11px;color:var(--muted);margin-bottom:8px;">
                         <?= htmlspecialchars($room['type_name']) ?>
                     </div>
 
@@ -191,8 +207,7 @@ function showModal(data) {
         ['Status',            `<span style="color:${color};font-weight:700">${data.status_label}</span>`],
         ['Notes',             data.notes || '—'],
     ];
-
-    let html = rows.map(([k, v]) =>
+let html = rows.map(([k, v]) =>
         `<div class="info-row"><span class="info-key">${k}</span><span class="info-val">${v}</span></div>`
     ).join('');
 
