@@ -75,10 +75,12 @@ include 'header.php';
 ?>
 
 <main class="page" style="max-width: 900px; margin: 0 auto;">
-    <div style="margin-bottom: 20px;">
-        <a href="ViolationView.php" style="text-decoration:none; color:#D87093; font-weight:600; font-size:14px;">
-            ⬅ Back to Violation List
+    <div class="sub-header" style="padding: 10px 0; margin-bottom: 15px; font-size: 13px; color: #718096;">
+        <a href="ViolationView.php" style="text-decoration: none; color: #718096; font-weight: 500; display: inline-flex; align-items: center; gap: 5px;">
+            Violations
         </a>
+        <span style="color: #cbd5e0; margin: 0 8px;">/</span>
+        <span style="color: #4a5568;">View Violation #<?= htmlspecialchars($v['violation_id']) ?></span>
     </div>
 
     <?php if(!empty($msg)): ?>
