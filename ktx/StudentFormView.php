@@ -1,21 +1,23 @@
 <?php
 // ============================================================
 //  StudentFormView.php — Add / Edit Student Form
+//  Add: INSERT into users + students (+ optional room assignment)
+//  Edit: UPDATE users + students
 // ============================================================
 
-// ---------- 1. BẢO MẬT & SESSION (Đã thêm) ----------
+// ---------- 1. SESSION CHECK ----------
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-// Chặn người dùng chưa đăng nhập
 if (!isset($_SESSION['user_id'])) {
     header("Location: LoginView.php");
     exit();
 }
 
 require_once __DIR__ . '/Validator.php';
+require_once __DIR__ . '/RoomController.php';
 
-// ---------- 2. KẾT NỐI DATABASE ----------
+// ---------- 2. DATABASE CONNECTION ----------
 $host = 'localhost'; $db = 'campus_final'; $user = 'root'; $pass = ''; $charset = 'utf8mb4';
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$db;charset=$charset", $user, $pass, [
@@ -23,7 +25,9 @@ try {
     ]);
 } catch (PDOException $e) { die('<p style="color:red">DB Connection Failed: ' . htmlspecialchars($e->getMessage()) . '</p>'); }
 
-// ---------- 3. XỬ LÝ LOGIC ----------
+$roomController = new RoomController($pdo);
+
+// ---------- 3. LOGIC ----------
 $studentId = filter_input(INPUT_GET, 'student_id', FILTER_VALIDATE_INT) ?: filter_input(INPUT_POST, 'student_id', FILTER_VALIDATE_INT);
 $isEdit    = (bool)$studentId;
 
@@ -52,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save'])) {
     $className   = trim($_POST['class_name']   ?? '');
     $hometown    = trim($_POST['hometown']     ?? '');
     $statusCode  = trim($_POST['status_code']  ?? 'active');
+    $roomId      = filter_input(INPUT_POST, 'room_id', FILTER_VALIDATE_INT) ?: null; // optional room assignment
 
     $errors = Validator::validateStudentForm($_POST);
 
@@ -66,6 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save'])) {
                 $pdo->commit();
                 $success = 'Student information updated successfully!';
                 $stmtGet->execute([$studentId]); $old = $stmtGet->fetch();
+
             } else {
                 $username = 'sv_' . strtolower($studentCode);
                 $pdo->prepare("INSERT INTO users (username, password, email, full_name, phone, role) VALUES (?, ?, ?, ?, ?, 'student')")
@@ -74,6 +80,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save'])) {
 
                 $pdo->prepare("INSERT INTO students (user_id, student_code, full_name, date_of_birth, gender, id_card, faculty, major, intake_year, class_name, hometown, status_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
                     ->execute([$newUserId, $studentCode, $fullName, $dob, $gender, $idCard, $faculty, $major, $intakeYear, $className, $hometown, $statusCode]);
+                $newStudentId = $pdo->lastInsertId();
+
+                // ---- OPTIONAL ROOM ASSIGNMENT ----
+                if ($roomId) {
+                    $stmtRoomInfo = $pdo->prepare("
+                        SELECT rt.price_per_month
+                        FROM rooms r JOIN room_types rt ON rt.type_id = r.type_id
+                        WHERE r.room_id = :rid
+                    ");
+                    $stmtRoomInfo->execute([':rid' => $roomId]);
+                    $roomInfo = $stmtRoomInfo->fetch();
+
+                    if ($roomInfo) {
+                        // Task 3 logic: subtract empty bed, auto-update room status
+                        $assignResult = $roomController->assignStudentToRoom($roomId);
+
+                        if ($assignResult['success']) {
+                            $contractCode = 'HD-' . date('Y') . '-S' . $newStudentId . '-R' . $roomId;
+                            $startDate = date('Y-m-d');
+                            $endDate   = date('Y-m-d', strtotime('+6 months'));
+
+                            $pdo->prepare("
+                                INSERT INTO contracts
+                                    (contract_code, student_id, room_id, start_date, end_date,
+                                     deposit_amount, deposit_paid, monthly_fee_snapshot, status_code, signed_date)
+                                VALUES
+                                    (:code, :sid, :rid, :start, :end, 0, 0, :fee, 'active', CURDATE())
+                            ")->execute([
+                                ':code'  => $contractCode,
+                                ':sid'   => $newStudentId,
+                                ':rid'   => $roomId,
+                                ':start' => $startDate,
+                                ':end'   => $endDate,
+                                ':fee'   => $roomInfo['price_per_month'],
+                            ]);
+                        }
+                        // If assignment fails (e.g. room under maintenance), student is still
+                        // created — admin can assign a room later from the Room view.
+                    }
+                }
 
                 $pdo->commit();
                 header('Location: StudentListView.php'); exit;
@@ -93,9 +139,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save'])) {
     }
 }
 
+// ---------- 4. ROOM LIST FOR DROPDOWN ----------
+// All rooms shown (including full/maintenance) — a JS warning is shown if selected.
+$rooms = $pdo->query("
+    SELECT
+        r.room_id, r.room_number, r.floor, r.status_code,
+        rt.type_name, rt.capacity, rt.price_per_month,
+        b.building_name, b.building_code,
+        (rt.capacity - r.current_occupancy) AS empty_beds
+    FROM rooms r
+    JOIN room_types rt ON rt.type_id = r.type_id
+    JOIN buildings  b  ON b.building_id = r.building_id
+    ORDER BY b.building_code, r.floor, r.room_number
+")->fetchAll();
+
 function val(string $key, array $old): string { return htmlspecialchars($_POST[$key] ?? $old[$key] ?? ''); }
 
-// ---------- 4. GỌI HEADER CHUNG ----------
+// ---------- 5. COMMON HEADER ----------
 $pageTitle = $isEdit ? 'Edit Student Profile' : 'Add New Student';
 include 'header.php';
 ?>
@@ -218,6 +278,36 @@ include 'header.php';
             </div>
         </div>
 
+        <?php if (!$isEdit): ?>
+        <!-- ROOM ASSIGNMENT — only shown when adding a new student -->
+        <div class="card">
+            <div class="card-header"><h2>🛏 Room Assignment (Optional)</h2></div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label class="form-label">Assign to Room</label>
+                    <select name="room_id" id="room_id" class="form-control" onchange="showRoomWarning()">
+                        <option value="">— Leave unassigned, assign later —</option>
+                        <?php foreach ($rooms as $r):
+                            $label = sprintf(
+                                '%s — Room %s (Floor %d, %s) — %d beds empty [%s]',
+                                $r['building_name'], $r['room_number'], $r['floor'], $r['type_name'],
+                                $r['empty_beds'], strtoupper($r['status_code'])
+                            );
+                        ?>
+                        <option value="<?= $r['room_id'] ?>"
+                                data-status="<?= $r['status_code'] ?>"
+                                <?= (($_POST['room_id'] ?? '') == $r['room_id']) ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($label) ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div style="font-size:12px;color:var(--muted);margin-top:6px">All rooms are listed, including full or under-maintenance ones — a warning will be shown if selected.</div>
+                    <div id="room-warning" class="alert alert-error" style="display:none;margin-top:10px"></div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <div class="form-actions">
             <button type="submit" class="btn btn-primary"><?= $isEdit ? '💾 Save Changes' : '➕ Add Student' ?></button>
             <a href="StudentListView.php" class="btn btn-ghost">✕ Cancel</a>
@@ -230,5 +320,26 @@ include 'header.php';
     </form>
 </main>
 
-<?php 
-?>
+<?php if (!$isEdit): ?>
+<script>
+function showRoomWarning() {
+    const sel = document.getElementById('room_id');
+    const opt = sel.options[sel.selectedIndex];
+    const warningBox = document.getElementById('room-warning');
+    const status = opt ? opt.dataset.status : '';
+
+    if (status === 'full') {
+        warningBox.style.display = 'block';
+        warningBox.textContent = 'Warning: this room is currently FULL. The student can still be assigned, but please double check bed availability.';
+    } else if (status === 'maintenance') {
+        warningBox.style.display = 'block';
+        warningBox.textContent = 'Warning: this room is currently UNDER MAINTENANCE and may not be ready for occupancy.';
+    } else {
+        warningBox.style.display = 'none';
+    }
+}
+</script>
+<?php endif; ?>
+
+</body>
+</html>
