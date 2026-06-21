@@ -14,7 +14,7 @@
     <a href="InvoiceView.php"      class="<?= basename($_SERVER['PHP_SELF']) == 'InvoiceView.php' || basename($_SERVER['PHP_SELF']) == 'InvoiceFormView.php' ? 'active' : '' ?>">
         Invoices
     </a>
-    <a href="ViolationListView.php" class="<?= basename($_SERVER['PHP_SELF']) == 'ViolationListView.php' || basename($_SERVER['PHP_SELF']) == 'ViolationFormView.php' ? 'active' : '' ?>">
+    <a href="ViolationView.php" class="<?= basename($_SERVER['PHP_SELF']) == 'ViolationView.php' || basename($_SERVER['PHP_SELF']) == 'ViolationFormView.php' ? 'active' : '' ?>">
         Violations
     </a>
     <a href="ProfileView.php"      class="<?= basename($_SERVER['PHP_SELF']) == 'ProfileView.php' || basename($_SERVER['PHP_SELF']) == 'EditProfileView.php' ? 'active' : '' ?>">
