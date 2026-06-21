@@ -1,438 +1,117 @@
 <?php
 // ============================================================
-//  RoomDetailView.php — Chi tiết phòng của 1 tòa nhà (Grid)
-//  Kết nối bảng: buildings, rooms, room_types
-//  Phòng available = xanh | full = đỏ | maintenance = vàng
+//  RoomDetailView.php — Room Layout for a Building (Grid)
+//  Connects to: buildings, rooms, room_types, contracts, students
 // ============================================================
 
-// ---------- 1. KẾT NỐI DATABASE ----------
-$host    = 'localhost';
-$db      = 'campus_final';
-$user    = 'root';
-$pass    = '';
-$charset = 'utf8mb4';
-
+$host = 'localhost'; $db = 'campus_final'; $user = 'root'; $pass = ''; $charset = 'utf8mb4';
 try {
-    $pdo = new PDO(
-        "mysql:host=$host;dbname=$db;charset=$charset",
-        $user, $pass,
-        [
-            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES   => false,
-        ]
-    );
-} catch (PDOException $e) {
-    die('<p style="color:red">Database connection failed: ' . htmlspecialchars($e->getMessage()) . '</p>');
-}
+    $pdo = new PDO("mysql:host=$host;dbname=$db;charset=$charset", $user, $pass, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, PDO::ATTR_EMULATE_PREPARES => false,
+    ]);
+} catch (PDOException $e) { die('<p style="color:red">DB Connection Failed: ' . htmlspecialchars($e->getMessage()) . '</p>'); }
 
-// ---------- 2. VALIDATE THAM SỐ ----------
 $buildingId = filter_input(INPUT_GET, 'building_id', FILTER_VALIDATE_INT);
-if (!$buildingId || $buildingId <= 0) {
-    header('Location: BuildingListView.php');
-    exit;
-}
+if (!$buildingId || $buildingId <= 0) { header('Location: BuildingListView.php'); exit; }
 
-// ---------- 3. LẤY THÔNG TIN TÒA NHÀ ----------
-$stmtB = $pdo->prepare("
-    SELECT building_id, building_code, building_name,
-           gender_type, total_floors, total_rooms, manager_name, manager_phone
-    FROM buildings
-    WHERE building_id = :id AND is_active = 1
-");
+$stmtB = $pdo->prepare("SELECT * FROM buildings WHERE building_id = :id AND is_active = 1");
 $stmtB->execute([':id' => $buildingId]);
 $building = $stmtB->fetch();
 
-if (!$building) {
-    die('<p style="color:red">Building not found.</p>');
-}
+if (!$building) die('<p style="color:red">Building not found.</p>');
 
-// ---------- 4. LẤY DANH SÁCH PHÒNG (JOIN 3 BẢNG) ----------
 $stmtR = $pdo->prepare("
-    SELECT
-        r.room_id,
-        r.room_number,
-        r.floor,
-        r.current_occupancy,
-        r.status_code,
-        r.notes,
-        rt.type_id,
-        rt.type_name,
-        rt.capacity,
-        rt.price_per_month,
-        rt.area_m2,
-        -- Số giường trống
-        (rt.capacity - r.current_occupancy) AS empty_beds
-    FROM rooms r
-    JOIN room_types rt ON rt.type_id = r.type_id
-    WHERE r.building_id = :bid
-    ORDER BY r.floor ASC, r.room_number ASC
+    SELECT r.room_id, r.room_number, r.floor, r.current_occupancy, r.status_code, r.notes,
+           rt.type_id, rt.type_name, rt.capacity, rt.price_per_month, rt.area_m2,
+           (rt.capacity - r.current_occupancy) AS empty_beds
+    FROM rooms r JOIN room_types rt ON rt.type_id = r.type_id
+    WHERE r.building_id = :bid ORDER BY r.floor ASC, r.room_number ASC
 ");
 $stmtR->execute([':bid' => $buildingId]);
 $rooms = $stmtR->fetchAll();
 
-// ---------- 5. NHÓM PHÒNG THEO TẦNG ----------
-$byFloor = [];
-foreach ($rooms as $room) {
-    $byFloor[$room['floor']][] = $room;
-}
-ksort($byFloor);
+$byFloor = []; foreach ($rooms as $room) $byFloor[$room['floor']][] = $room; ksort($byFloor);
 
-// ---------- 6. THỐNG KÊ NHANH ----------
 $total     = count($rooms);
 $available = count(array_filter($rooms, fn($r) => $r['status_code'] === 'available'));
 $full      = count(array_filter($rooms, fn($r) => $r['status_code'] === 'full'));
 $maint     = count(array_filter($rooms, fn($r) => $r['status_code'] === 'maintenance'));
 
-// ---------- 7. HÀM TIỆN ÍCH ----------
 function statusInfo(string $code): array {
     return match($code) {
-        'available'   => ['class' => 'room-available', 'label' => 'Available',   'icon' => ''],
-        'full'        => ['class' => 'room-full',       'label' => 'Full',        'icon' => ''],
-        'maintenance' => ['class' => 'room-maint',      'label' => 'Maintenance', 'icon' => ''],
-        'closed'      => ['class' => 'room-closed',     'label' => 'Closed',      'icon' => ''],
-        default       => ['class' => 'room-unknown',    'label' => $code,         'icon' => ''],
+        'available'   => ['class' => 'room-available', 'label' => 'Available'],
+        'full'        => ['class' => 'room-full',      'label' => 'Full'],
+        'maintenance' => ['class' => 'room-maint',     'label' => 'Maintenance'],
+        'closed'      => ['class' => 'room-closed',    'label' => 'Closed'],
+        default       => ['class' => 'room-unknown',   'label' => $code],
     };
 }
 
-function formatPrice(float $price): string {
-    return number_format($price, 0, ',', '.') . ' VND';
-}
+$pageTitle = htmlspecialchars($building['building_name']) . " — Room Layout";
+include 'header.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title><?= htmlspecialchars($building['building_name']) ?> — Room Map</title>
-<style>
-/* ===== RESET & BASE ===== */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-:root {
-    --bg:        #f0f2f5;
-    --card:      #ffffff;
-    --primary:   #1d4ed8;
-    --primary-lt:#eff6ff;
-    --text:      #1e293b;
-    --muted:     #64748b;
-    --border:    #e2e8f0;
-
-    /* Màu trạng thái phòng */
-    --c-avail:   #16a34a;
-    --c-avail-lt:#dcfce7;
-    --c-avail-bd:#bbf7d0;
-
-    --c-full:    #dc2626;
-    --c-full-lt: #fee2e2;
-    --c-full-bd: #fca5a5;
-
-    --c-maint:   #ca8a04;
-    --c-maint-lt:#fef9c3;
-    --c-maint-bd:#fde68a;
-
-    --c-closed:  #6b7280;
-    --c-closed-lt:#f3f4f6;
-    --c-closed-bd:#d1d5db;
-
-    --radius: 12px;
-    --shadow: 0 1px 3px rgba(0,0,0,.08);
-}
-
-body {
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-}
-
-/* ===== HEADER ===== */
-.site-header {
-    background: var(--primary); color: #fff;
-    padding: 0 24px; display: flex; align-items: center;
-    gap: 16px; height: 60px;
-    box-shadow: 0 2px 8px rgba(0,0,0,.15);
-}
-.site-header .logo { font-size: 20px; font-weight: 700; }
-.site-header .subtitle { font-size: 13px; opacity: .75; }
-.site-header nav { margin-left: auto; display: flex; gap: 4px; }
-.site-header nav a {
-    color:#fff; text-decoration:none; padding:6px 14px;
-    border-radius:6px; font-size:13px; opacity:.8;
-    transition: background .15s;
-}
-.site-header nav a:hover { background: rgba(255,255,255,.15); opacity:1; }
-
-/* ===== PAGE ===== */
-.page { max-width: 1300px; margin: 0 auto; padding: 28px 20px; }
-
-/* Breadcrumb */
-.breadcrumb {
-    display: flex; align-items: center; gap: 8px;
-    font-size: 13px; color: var(--muted); margin-bottom: 16px;
-}
-.breadcrumb a { color: var(--primary); text-decoration: none; }
-.breadcrumb a:hover { text-decoration: underline; }
-.breadcrumb span { opacity: .5; }
-
-/* Page title */
-.page-title {
-    font-size: 22px; font-weight: 700;
-    display: flex; align-items: center; gap: 10px; margin-bottom: 4px;
-}
-.page-title::before {
-    content:''; display:block; width:4px; height:28px;
-    background:var(--primary); border-radius:2px;
-}
-.page-meta { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
-
-/* ===== STATS ROW ===== */
-.stats-row {
-    display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px;
-}
-.stat {
-    background: var(--card); border-radius: 10px;
-    padding: 14px 20px; box-shadow: var(--shadow);
-    min-width: 110px; border-top: 3px solid transparent;
-    flex: 1 1 100px;
-}
-.stat.blue   { border-color: var(--primary); }
-.stat.green  { border-color: var(--c-avail); }
-.stat.red    { border-color: var(--c-full); }
-.stat.yellow { border-color: var(--c-maint); }
-.stat-n { font-size: 24px; font-weight: 700; }
-.stat-l { font-size: 12px; color: var(--muted); margin-top: 2px; }
-
-/* ===== LEGEND ===== */
-.legend {
-    display: flex; gap: 16px; flex-wrap: wrap;
-    margin-bottom: 22px; align-items: center;
-}
-.legend-item {
-    display: flex; align-items: center; gap: 6px;
-    font-size: 13px; color: var(--muted);
-}
-.legend-box {
-    width: 20px; height: 20px; border-radius: 5px;
-    border: 2px solid;
-}
-.lb-avail { background:var(--c-avail-lt); border-color:var(--c-avail); }
-.lb-full  { background:var(--c-full-lt);  border-color:var(--c-full); }
-.lb-maint { background:var(--c-maint-lt); border-color:var(--c-maint); }
-
-/* ===== FLOOR SECTION ===== */
-.floor-section { margin-bottom: 28px; }
-.floor-label {
-    font-size: 13px; font-weight: 700; color: var(--muted);
-    text-transform: uppercase; letter-spacing: .6px;
-    padding: 6px 12px; background: var(--card);
-    border-radius: 8px; display: inline-block;
-    margin-bottom: 12px; box-shadow: var(--shadow);
-}
-
-/* ===== ROOM GRID ===== */
-.room-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 12px;
-}
-
-/* ===== ROOM CARD ===== */
-.room-card {
-    border-radius: 10px;
-    border: 2px solid transparent;
-    padding: 14px 12px;
-    cursor: pointer;
-    position: relative;
-    transition: transform .15s, box-shadow .15s;
-}
-.room-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 16px rgba(0,0,0,.12);
-}
-
-/* Màu theo trạng thái */
-.room-available {
-    background: var(--c-avail-lt);
-    border-color: var(--c-avail-bd);
-}
-.room-full {
-    background: var(--c-full-lt);
-    border-color: var(--c-full-bd);
-}
-.room-maint {
-    background: var(--c-maint-lt);
-    border-color: var(--c-maint-bd);
-}
-.room-closed, .room-unknown {
-    background: var(--c-closed-lt);
-    border-color: var(--c-closed-bd);
-}
-
-.room-number {
-    font-size: 20px; font-weight: 800; line-height: 1;
-    margin-bottom: 6px;
-}
-.room-available .room-number { color: var(--c-avail); }
-.room-full      .room-number { color: var(--c-full); }
-.room-maint     .room-number { color: var(--c-maint); }
-.room-closed    .room-number { color: var(--c-closed); }
-
-.room-type { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
-
-.room-beds {
-    display: flex; gap: 3px; flex-wrap: wrap; margin-bottom: 8px;
-}
-.bed {
-    width: 16px; height: 16px; border-radius: 3px;
-    border: 1.5px solid currentColor; font-size: 9px;
-    display: flex; align-items: center; justify-content: center;
-}
-.bed.occupied { background: currentColor; }
-
-.room-status-badge {
-    font-size: 11px; font-weight: 700;
-    display: flex; align-items: center; gap: 3px;
-}
-.room-available .room-status-badge { color: var(--c-avail); }
-.room-full      .room-status-badge { color: var(--c-full); }
-.room-maint     .room-status-badge { color: var(--c-maint); }
-.room-closed    .room-status-badge { color: var(--c-closed); }
-
-.room-price {
-    font-size: 11px; color: var(--muted); margin-top: 5px;
-}
-
-/* ===== MODAL OVERLAY ===== */
-.modal-overlay {
-    display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,.45); z-index: 100;
-    align-items: center; justify-content: center; padding: 20px;
-}
-.modal-overlay.open { display: flex; }
-
-.modal {
-    background: var(--card); border-radius: 16px;
-    padding: 28px; max-width: 380px; width: 100%;
-    box-shadow: 0 20px 60px rgba(0,0,0,.2);
-    animation: modal-in .18s ease;
-}
-@keyframes modal-in {
-    from { transform: scale(.95); opacity: 0; }
-    to   { transform: scale(1);   opacity: 1; }
-}
-.modal-header {
-    display: flex; justify-content: space-between; align-items: flex-start;
-    margin-bottom: 20px;
-}
-.modal-title { font-size: 18px; font-weight: 700; }
-.modal-close {
-    background: none; border: none; font-size: 20px;
-    cursor: pointer; color: var(--muted); line-height: 1;
-    padding: 2px 6px; border-radius: 4px;
-}
-.modal-close:hover { background: var(--bg); }
-
-.info-row {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 10px 0; border-bottom: 1px solid var(--border);
-    font-size: 14px;
-}
-.info-row:last-child { border-bottom: none; }
-.info-key { color: var(--muted); }
-.info-val { font-weight: 600; }
-
-/* ===== RESPONSIVE ===== */
-@media (max-width: 600px) {
-    .site-header nav { display: none; }
-    .room-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
-    .room-card { padding: 10px 8px; }
-    .room-number { font-size: 16px; }
-    .stats-row { gap: 8px; }
-}
-</style>
-</head>
-<body>
-
-<!-- HEADER -->
-<header class="site-header">
-    <div>
-        <div class="logo">KTX Campus</div>
-        <div class="subtitle">Dormitory Management System</div>
-    </div>
-    <nav>
-        <a href="BuildingListView.php">Buildings</a>
-        <a href="StudentListView.php">Students</a>
-        <a href="ContractListView.php">Contracts</a>
-        <a href="InvoiceView.php">Invoices</a>
-        <a href="#">Violations</a>
-    </nav>
-</header>
 
 <main class="page">
-
-    <!-- BREADCRUMB -->
     <div class="breadcrumb">
-        <a href="BuildingListView.php">Buildings</a>
+        <a href="BuildingListView.php">🏠 Buildings</a>
         <span>›</span>
         <span><?= htmlspecialchars($building['building_name']) ?></span>
     </div>
 
-    <!-- TIÊU ĐỀ -->
     <h1 class="page-title"><?= htmlspecialchars($building['building_name']) ?></h1>
-    <p class="page-meta">
+    <p class="page-desc">
         Manager: <strong><?= htmlspecialchars($building['manager_name'] ?? '—') ?></strong>
         · <?= htmlspecialchars($building['manager_phone'] ?? '') ?>
-        · <?= $building['total_floors'] ?> floors
+        · <?= $building['total_floors'] ?> Floors
     </p>
 
-    <!-- STATS -->
     <div class="stats-row">
-        <div class="stat blue">
-            <div class="stat-n"><?= $total ?></div>
-            <div class="stat-l">Total Rooms</div>
+        <div class="stat-card">
+            <div class="stat-value"><?= $total ?></div><div class="stat-label">Total Rooms</div>
         </div>
-        <div class="stat green">
-            <div class="stat-n"><?= $available ?></div>
-            <div class="stat-l">Available</div>
+        <div class="stat-card green">
+            <div class="stat-value"><?= $available ?></div><div class="stat-label">Available</div>
         </div>
-        <div class="stat red">
-            <div class="stat-n"><?= $full ?></div>
-            <div class="stat-l">Full</div>
+        <div class="stat-card red">
+            <div class="stat-value"><?= $full ?></div><div class="stat-label">Full</div>
         </div>
-        <div class="stat yellow">
-            <div class="stat-n"><?= $maint ?></div>
-            <div class="stat-l">Maintenance</div>
+        <div class="stat-card yellow">
+            <div class="stat-value"><?= $maint ?></div><div class="stat-label">Maintenance</div>
         </div>
     </div>
 
-    <!-- CHÚ THÍCH -->
-    <div class="legend">
+    <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:22px; align-items:center;">
         <strong style="font-size:13px">Legend:</strong>
-        <div class="legend-item"><div class="legend-box lb-avail"></div> Available</div>
-        <div class="legend-item"><div class="legend-box lb-full"></div>  Full</div>
-        <div class="legend-item"><div class="legend-box lb-maint"></div> Under Maintenance</div>
-        <span style="font-size:12px;color:var(--muted);margin-left:auto">Click a room to view details</span>
+        <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);"><div style="width:20px;height:20px;border-radius:5px;background:var(--green-lt);border:2px solid var(--green);"></div> Available</div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);"><div style="width:20px;height:20px;border-radius:5px;background:var(--red-lt);border:2px solid var(--red);"></div> Full</div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);"><div style="width:20px;height:20px;border-radius:5px;background:var(--yellow-lt);border:2px solid var(--yellow);"></div> Maintenance</div>
+        <span style="font-size:12px;color:var(--muted);margin-left:auto">Click on a room for details</span>
     </div>
 
     <?php if (empty($rooms)): ?>
-        <div style="text-align:center;color:var(--muted);padding:60px 0;font-size:15px">
-            This building has no rooms yet.
-        </div>
+        <div class="empty">No rooms available in this building.</div>
     <?php else: ?>
 
-        <!-- GRID PHÒNG THEO TẦNG -->
         <?php foreach ($byFloor as $floor => $floorRooms): ?>
-        <div class="floor-section">
-            <div class="floor-label">Floor <?= $floor ?> — <?= count($floorRooms) ?> rooms</div>
-            <div class="room-grid">
+        <div style="margin-bottom: 28px;">
+            <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;padding:6px 12px;background:var(--card);border-radius:8px;display:inline-block;margin-bottom:12px;box-shadow:var(--shadow);">
+                Floor <?= $floor ?> — <?= count($floorRooms) ?> rooms
+            </div>
+
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:12px;">
                 <?php foreach ($floorRooms as $room):
                     $info      = statusInfo($room['status_code']);
                     $capacity  = (int)$room['capacity'];
                     $occupied  = (int)$room['current_occupancy'];
                     $emptyBeds = (int)$room['empty_beds'];
+
+                    $bgColor = match($room['status_code']) { 'available' => 'var(--green-lt)', 'full' => 'var(--red-lt)', 'maintenance' => 'var(--yellow-lt)', default => '#f3f4f6' };
+                    $bdColor = match($room['status_code']) { 'available' => 'var(--green)', 'full' => 'var(--red)', 'maintenance' => 'var(--yellow)', default => '#d1d5db' };
+                    $txColor = match($room['status_code']) { 'available' => 'var(--green)', 'full' => 'var(--red)', 'maintenance' => 'var(--yellow)', default => 'var(--muted)' };
                 ?>
-                <div class="room-card <?= $info['class'] ?>"
+                <div style="border-radius:10px; border:2px solid <?= $bdColor ?>; background:<?= $bgColor ?>; padding:14px 12px; cursor:pointer; transition:transform .15s, box-shadow .15s;"
+                     onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 6px 16px rgba(0,0,0,.12)';"
+                     onmouseout="this.style.transform='none'; this.style.boxShadow='none';"
                      onclick="showModal(<?= htmlspecialchars(json_encode([
                          'room_id'           => $room['room_id'],
                          'room_number'       => $room['room_number'],
@@ -449,32 +128,30 @@ body {
                      ]), ENT_QUOTES) ?>)"
                      title="Room <?= htmlspecialchars($room['room_number']) ?> — <?= $info['label'] ?>">
 
-                    <!-- Số phòng -->
-                    <div class="room-number"><?= htmlspecialchars($room['room_number']) ?></div>
+                    <div style="font-size:20px;font-weight:800;line-height:1;margin-bottom:6px;color:<?= $txColor ?>;">
+                        <?= htmlspecialchars($room['room_number']) ?>
+                    </div>
+                    <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">
+                        <?= htmlspecialchars($room['type_name']) ?>
+                    </div>
 
-                    <!-- Loại phòng -->
-                    <div class="room-type"><?= htmlspecialchars($room['type_name']) ?></div>
-
-                    <!-- Giường (icon trực quan) -->
-                    <div class="room-beds">
+                    <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px;color:<?= $txColor ?>;">
                         <?php for ($i = 0; $i < $capacity; $i++): ?>
-                        <div class="bed <?= ($i < $occupied) ? 'occupied' : '' ?>"
+                        <div style="width:16px;height:16px;border-radius:3px;border:1.5px solid currentColor;font-size:9px;display:flex;align-items:center;justify-content:center; <?= ($i < $occupied) ? 'background:currentColor;' : '' ?>"
                              title="<?= ($i < $occupied) ? 'Occupied' : 'Empty' ?>">
                             <?= ($i < $occupied) ? '●' : '' ?>
                         </div>
                         <?php endfor; ?>
                     </div>
 
-                    <!-- Trạng thái -->
-                    <div class="room-status-badge">
+                    <div style="font-size:11px;font-weight:700;color:<?= $txColor ?>;">
                         <?= $info['label'] ?>
                     </div>
 
-                    <!-- Số giường trống -->
                     <?php if ($room['status_code'] === 'available'): ?>
-                    <div class="room-price"><?= $emptyBeds ?>/<?= $capacity ?> beds available</div>
+                    <div style="font-size:11px;color:var(--muted);margin-top:5px;">Available <?= $emptyBeds ?>/<?= $capacity ?> beds</div>
                     <?php elseif ($room['status_code'] === 'full'): ?>
-                    <div class="room-price">Full <?= $capacity ?>/<?= $capacity ?> beds</div>
+                    <div style="font-size:11px;color:var(--muted);margin-top:5px;">Full <?= $capacity ?>/<?= $capacity ?> beds</div>
                     <?php endif; ?>
 
                 </div>
@@ -486,7 +163,6 @@ body {
     <?php endif; ?>
 </main>
 
-<!-- MODAL CHI TIẾT PHÒNG -->
 <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
     <div class="modal" id="modal-box">
         <div class="modal-header">
@@ -500,44 +176,34 @@ body {
 <script>
 function showModal(data) {
     document.getElementById('modal-title').textContent = 'Room ' + data.room_number;
-    const statusColors = {
-        'available':   '#16a34a',
-        'full':        '#dc2626',
-        'maintenance': '#ca8a04',
-        'closed':      '#6b7280',
-    };
-    const color = statusColors[data.status_code] || '#64748b';
+    const statusColors = { 'available': 'var(--green)', 'full': 'var(--red)', 'maintenance': 'var(--yellow)', 'closed': 'var(--muted)' };
+    const color = statusColors[data.status_code] || 'var(--muted)';
 
     const rows = [
-        ['Room Number',     data.room_number],
-        ['Floor',           'Floor ' + data.floor],
-        ['Room Type',       data.type_name],
-        ['Capacity',        data.capacity + ' people'],
+        ['Room Number',       data.room_number],
+        ['Floor',             'Floor ' + data.floor],
+        ['Room Type',         data.type_name],
+        ['Capacity',          data.capacity + ' people'],
         ['Current Occupants', data.current_occupancy + ' people'],
-        ['Empty Beds',      data.empty_beds + ' beds'],
-        ['Area',            data.area_m2 ? data.area_m2 + ' m²' : '—'],
-        ['Price / Month',   parseInt(data.price_per_month).toLocaleString('en-US') + ' VND'],
-        ['Status',          `<span style="color:${color};font-weight:700">${data.status_label}</span>`],
-        ['Notes',           data.notes || '—'],
+        ['Empty Beds',        data.empty_beds + ' beds'],
+        ['Area',              data.area_m2 ? data.area_m2 + ' m²' : '—'],
+        ['Price / Month',     parseInt(data.price_per_month).toLocaleString('en-US') + ' VND'],
+        ['Status',            `<span style="color:${color};font-weight:700">${data.status_label}</span>`],
+        ['Notes',             data.notes || '—'],
     ];
 
     let html = rows.map(([k, v]) =>
-        `<div class="info-row">
-            <span class="info-key">${k}</span>
-            <span class="info-val">${v}</span>
-        </div>`
+        `<div class="info-row"><span class="info-key">${k}</span><span class="info-val">${v}</span></div>`
     ).join('');
 
-    // Placeholder cho danh sách sinh viên, sẽ được điền sau khi AJAX trả về
     html += `<div id="modal-students-section" style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">
-        <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Students in this Room</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">👥 Students in this Room</div>
         <div id="modal-students-list" style="font-size:13px;color:var(--muted)">Loading...</div>
     </div>`;
 
     document.getElementById('modal-body').innerHTML = html;
     document.getElementById('modal-overlay').classList.add('open');
 
-    // Gọi AJAX lấy danh sách sinh viên đang ở phòng này
     fetchRoomStudents(data.room_id);
 }
 
@@ -546,13 +212,12 @@ function fetchRoomStudents(roomId) {
         .then(res => res.json())
         .then(result => {
             const listEl = document.getElementById('modal-students-list');
-            if (!listEl) return; // modal đã đóng trước khi fetch xong
+            if (!listEl) return;
 
             if (!result.success) {
-                listEl.innerHTML = '<span style="color:#dc2626">Could not load student list.</span>';
+                listEl.innerHTML = '<span style="color:var(--red)">⚠ Could not load student list.</span>';
                 return;
             }
-
             if (result.count === 0) {
                 listEl.innerHTML = '<span>No students currently assigned to this room.</span>';
                 return;
@@ -564,15 +229,13 @@ function fetchRoomStudents(roomId) {
                         <div style="font-weight:600;color:var(--text)">${escapeHtml(s.full_name)}</div>
                         <div style="font-size:11px;color:var(--muted)">${escapeHtml(s.student_code)} · ${escapeHtml(s.phone || '—')}</div>
                     </div>
-                    <div style="font-size:11px;color:var(--muted);text-align:right">
-                        From ${formatDate(s.start_date)}
-                    </div>
+                    <div style="font-size:11px;color:var(--muted);text-align:right">From ${formatDate(s.start_date)}</div>
                 </div>
             `).join('');
         })
         .catch(() => {
             const listEl = document.getElementById('modal-students-list');
-            if (listEl) listEl.innerHTML = '<span style="color:#dc2626">Network error while loading students.</span>';
+            if (listEl) listEl.innerHTML = '<span style="color:var(--red)">⚠ Network error while loading students.</span>';
         });
 }
 
@@ -586,18 +249,12 @@ function formatDate(dateStr) {
     if (!dateStr) return '—';
     const d = new Date(dateStr);
     if (isNaN(d)) return dateStr;
-    return d.toLocaleDateString('en-GB'); // dd/mm/yyyy
+    return d.toLocaleDateString('en-GB');
 }
 
-function closeModal(e) {
-    if (e.target.id === 'modal-overlay') closeModalDirect();
-}
-function closeModalDirect() {
-    document.getElementById('modal-overlay').classList.remove('open');
-}
-document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') closeModalDirect();
-});
+function closeModal(e) { if (e.target.id === 'modal-overlay') closeModalDirect(); }
+function closeModalDirect() { document.getElementById('modal-overlay').classList.remove('open'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModalDirect(); });
 </script>
 
 </body>

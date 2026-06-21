@@ -4,38 +4,14 @@
 //  Connects to: buildings, rooms
 // ============================================================
 
-// ---------- 1. BẢO MẬT & SESSION (Thêm mới) ----------
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-// Chặn người lạ chưa đăng nhập
-if (!isset($_SESSION['user_id'])) {
-    header("Location: LoginView.php");
-    exit();
-}
-
-// ---------- 2. DATABASE CONNECTION ----------
-$host   = 'localhost';
-$db     = 'campus_final';   
-$user   = 'root';
-$pass   = '';
-$charset = 'utf8mb4';
-
+$host = 'localhost'; $db = 'campus_final'; $user = 'root'; $pass = ''; $charset = 'utf8mb4';
 try {
-    $pdo = new PDO(
-        "mysql:host=$host;dbname=$db;charset=$charset",
-        $user, $pass,
-        [
-            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES   => false,
-        ]
-    );
-} catch (PDOException $e) {
-    die('<p style="color:red">DB Connection Failed: ' . htmlspecialchars($e->getMessage()) . '</p>');
-}
+    $pdo = new PDO("mysql:host=$host;dbname=$db;charset=$charset", $user, $pass, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, PDO::ATTR_EMULATE_PREPARES => false,
+    ]);
+} catch (PDOException $e) { die('<p style="color:red">DB Connection Failed: ' . htmlspecialchars($e->getMessage()) . '</p>'); }
 
-// ---------- 3. QUERY DATA ----------
+// Task 6: PDO Prepared Statement
 $sql = "
     SELECT
         b.building_id,
@@ -47,10 +23,10 @@ $sql = "
         b.manager_name,
         b.manager_phone,
         b.description,
-        COUNT(r.room_id)                                                  AS actual_rooms,
-        SUM(CASE WHEN r.status_code = 'available'   THEN 1 ELSE 0 END)    AS rooms_available,
-        SUM(CASE WHEN r.status_code = 'full'         THEN 1 ELSE 0 END)   AS rooms_full,
-        SUM(CASE WHEN r.status_code = 'maintenance'  THEN 1 ELSE 0 END)   AS rooms_maintenance
+        COUNT(r.room_id)                                                AS actual_rooms,
+        SUM(CASE WHEN r.status_code = 'available'   THEN 1 ELSE 0 END) AS rooms_available,
+        SUM(CASE WHEN r.status_code = 'full'         THEN 1 ELSE 0 END) AS rooms_full,
+        SUM(CASE WHEN r.status_code = 'maintenance'  THEN 1 ELSE 0 END) AS rooms_maintenance
     FROM buildings b
     LEFT JOIN rooms r ON r.building_id = b.building_id
     WHERE b.is_active = 1
@@ -62,12 +38,11 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute();
 $buildings = $stmt->fetchAll();
 
-// ---------- 4. UTILITY FUNCTIONS ----------
 function genderLabel(string $type): string {
     return match($type) {
-        'male'   => '♂ Male',
-        'female' => '♀ Female',
-        'mixed'  => '⊕ Mixed',
+        'male'   => 'Male',
+        'female' => 'Female',
+        'mixed'  => 'Mixed',
         default  => $type,
     };
 }
@@ -81,9 +56,8 @@ function genderClass(string $type): string {
     };
 }
 
-// ---------- 5. GỌI GIAO DIỆN CHUNG (HEADER) ----------
 $pageTitle = "Building Management";
-include 'header.php'; 
+include 'header.php';
 ?>
 
 <main class="page">
@@ -103,7 +77,7 @@ include 'header.php';
             <div class="stat-value"><?= $totalBuildings ?></div>
             <div class="stat-label">Total Buildings</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card blue">
             <div class="stat-value"><?= $totalRooms ?></div>
             <div class="stat-label">Total Rooms</div>
         </div>
@@ -123,7 +97,7 @@ include 'header.php';
 
     <div class="table-wrap">
         <div class="table-header">
-            <h2>📋 All Buildings (<?= $totalBuildings ?>)</h2>
+            <h2>All Buildings (<?= $totalBuildings ?>)</h2>
         </div>
         <div class="table-responsive">
             <table>
@@ -131,19 +105,19 @@ include 'header.php';
                     <tr>
                         <th>Code / Name</th>
                         <th>Gender Assigned</th>
-                        <th>Floors</th>
+                        <th class="hide-mobile">Floors</th>
                         <th>Room Status</th>
-                        <th>Manager</th>
+                        <th class="hide-mobile">Manager</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                 <?php if (empty($buildings)): ?>
-                    <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:40px">No building data available.</td></tr>
+                    <tr><td colspan="6"><div class="empty">No building data available.</div></td></tr>
                 <?php else: ?>
                     <?php foreach ($buildings as $b):
-                        $total   = $b['actual_rooms'] ?: 1;
-                        $fullPct = round(($b['rooms_full'] / $total) * 100);
+                        $totalActual = $b['actual_rooms'] ?: 1;
+                        $fullPct = round(($b['rooms_full'] / $totalActual) * 100);
                         $fillClass = $fullPct >= 80 ? 'high' : ($fullPct >= 50 ? 'mid' : '');
                     ?>
                     <tr>
@@ -161,17 +135,17 @@ include 'header.php';
                                 <?= genderLabel($b['gender_type']) ?>
                             </span>
                         </td>
-                        <td style="color:var(--muted)"><?= $b['total_floors'] ?> floors</td>
+                        <td class="hide-mobile" style="color:var(--muted)"><?= $b['total_floors'] ?> floors</td>
                         <td>
                             <div class="room-bar">
                                 <?php if ($b['rooms_available'] > 0): ?>
-                                <span class="room-dot avail">✓ <?= $b['rooms_available'] ?> available</span>
+                                <span class="room-dot avail"><?= $b['rooms_available'] ?> available</span>
                                 <?php endif; ?>
                                 <?php if ($b['rooms_full'] > 0): ?>
-                                <span class="room-dot full">✗ <?= $b['rooms_full'] ?> full</span>
+                                <span class="room-dot full"><?= $b['rooms_full'] ?> full</span>
                                 <?php endif; ?>
                                 <?php if ($b['rooms_maintenance'] > 0): ?>
-                                <span class="room-dot maint">⚙ <?= $b['rooms_maintenance'] ?> maint.</span>
+                                <span class="room-dot maint"><?= $b['rooms_maintenance'] ?> maint.</span>
                                 <?php endif; ?>
                             </div>
                             <div style="margin-top:6px;display:flex;align-items:center;gap:6px">
@@ -181,14 +155,13 @@ include 'header.php';
                                 <span style="font-size:11px;color:var(--muted)"><?= $fullPct ?>% filled</span>
                             </div>
                         </td>
-                        <td>
+                        <td class="hide-mobile">
                             <div style="font-size:13px"><?= htmlspecialchars($b['manager_name'] ?? '—') ?></div>
                             <div style="font-size:12px;color:var(--muted)"><?= htmlspecialchars($b['manager_phone'] ?? '') ?></div>
                         </td>
                         <td>
-                            <a class="btn-detail"
-                               href="RoomDetailView.php?building_id=<?= $b['building_id'] ?>">
-                                🔍 View Rooms
+                            <a class="btn-detail" href="RoomDetailView.php?building_id=<?= $b['building_id'] ?>">
+                                View Rooms
                             </a>
                         </td>
                     </tr>
@@ -199,8 +172,5 @@ include 'header.php';
         </div>
     </div>
 </main>
-
-<?php 
-?>
 </body>
 </html>
