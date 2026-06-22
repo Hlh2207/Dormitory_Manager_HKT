@@ -1,12 +1,9 @@
 <?php
-// ============================================================
-//  LoginView.php — System Authentication
-//  Connects to: users table
-// ============================================================
+
 
 // ---------- 1. DATABASE CONNECTION ----------
 $host    = 'localhost';
-$db      = 'campus_final'; // Tên database đồng bộ với cấu hình máy bạn
+$db      = 'campus_final';
 $user    = 'root';
 $pass    = '';
 $charset = 'utf8mb4';
@@ -25,15 +22,15 @@ try {
     die('<p style="color:red">DB Connection Failed: ' . htmlspecialchars($e->getMessage()) . '</p>');
 }
 
-// Khởi tạo session hệ thống phục vụ Task 3 của bạn
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Biến lưu thông báo lỗi nếu có
+
 $errorMsg = "";
 
-// ---------- 2. XỬ LÝ FORM ĐĂNG NHẬP (MẪU LOGIC GIAI ĐOẠN 2) ----------
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
     $password = trim($_POST['password'] ?? '');
@@ -41,37 +38,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($username) || empty($password)) {
         $errorMsg = "Please enter both username and password.";
     } else {
-        // Truy vấn thông tin người dùng từ bảng users dựa vào SQL bạn gửi
+        
         $sql = "SELECT user_id, username, password, role, full_name, status_code FROM users WHERE username = :username LIMIT 1";
         $stmt = $pdo->prepare($sql);
         $stmt->execute(['username' => $username]);
         $userAccount = $stmt->fetch();
 
         if ($userAccount) {
-            // Kiểm tra trạng thái tài khoản có bị khóa không (Lookup từ bảng statuses)
+            
             if ($userAccount['status_code'] === 'inactive') {
                 $errorMsg = "Your account has been locked. Please contact administration.";
             } else {
-                // Do mật khẩu mẫu trong file SQL đang là text thô hoặc bcrypt fake, 
-                // đoạn này hỗ trợ cả kiểm tra chuỗi thô lẫn password_verify (Bcrypt chuẩn)
+                
                 $isPasswordCorrect = false;
                 if ($password === $userAccount['username'] || $password === $userAccount['password'] || password_verify($password, $userAccount['password'])) {
                     $isPasswordCorrect = true;
                 }
 
                 if ($isPasswordCorrect) {
-                    // Đăng nhập thành công -> Lưu Session (Task 3)
+                    
                     $_SESSION['user_id']   = $userAccount['user_id'];
                     $_SESSION['username']  = $userAccount['username'];
                     $_SESSION['role']      = $userAccount['role']; // admin, staff, student
                     $_SESSION['full_name'] = $userAccount['full_name'];
 
-                    // Cập nhật thời gian đăng nhập cuối cùng (last_login)
+                    
                     $updateSql = "UPDATE users SET last_login = NOW() WHERE user_id = :user_id";
                     $updateStmt = $pdo->prepare($updateSql);
                     $updateStmt->execute(['user_id' => $userAccount['user_id']]);
 
-                    // Điều hướng về trang chủ/Dashboard dựa vào quyền
+                    
                     header("Location: index.php");
                     exit();
                 } else {

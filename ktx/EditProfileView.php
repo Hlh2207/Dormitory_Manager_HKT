@@ -1,8 +1,5 @@
 <?php
-// ============================================================
-//  EditProfileView.php — Chỉnh sửa hồ sơ Admin/Staff
-//  Connects to: users table
-// ============================================================
+
 
 $host    = 'localhost';
 $db      = 'campus_final'; 
