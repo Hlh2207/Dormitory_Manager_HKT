@@ -203,9 +203,9 @@ include 'header.php';
                             <div style="font-size:13px;white-space:nowrap"><?= fmtMoney((float)$ct['deposit_amount']) ?></div>
                             <div style="font-size:11px;margin-top:2px">
                                 <?php if ($ct['deposit_paid']): ?>
-                                <span class="dep-yes">✔ Collected</span>
+                                <span class="dep-yes">Collected</span>
                                 <?php else: ?>
-                                <span class="dep-no">— Pending</span>
+                                <span class="dep-no">Pending</span>
                                 <?php endif; ?>
                             </div>
                         </td>
@@ -213,12 +213,12 @@ include 'header.php';
                         <td>
                             <div style="display:flex;gap:6px;flex-wrap:wrap">
                                 <a href="ContractFormView.php?contract_id=<?= $ct['contract_id'] ?>"
-                                   class="btn btn-edit btn-sm">✏ Edit</a>
+                                   class="btn btn-edit btn-sm">Edit</a>
                                 <form method="POST"
                                       onsubmit="return confirm('Delete contract <?= htmlspecialchars(addslashes($ct['contract_code'])) ?> of <?= htmlspecialchars(addslashes($ct['full_name'])) ?>?')">
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="contract_id" value="<?= $ct['contract_id'] ?>">
-                                    <button type="submit" class="btn btn-danger btn-sm">🗑 Del</button>
+                                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                                 </form>
                             </div>
                         </td>
