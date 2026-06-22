@@ -1,8 +1,5 @@
 <?php
-// ============================================================
-//  ViolationDetailView.php — Update Progress & Review Incident
-//  Updates fields in: violation_records
-// ============================================================
+
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -30,7 +27,7 @@ try {
 $violation_id = $_GET['id'] ?? 0;
 $msg = "";
 
-// CẬP NHẬT TRẠNG THÁI XỬ LÝ VI PHẠM (ĐÃ LƯỢC BỎ UPDATED_BY)
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['btn_update_status'])) {
     $new_status    = $_POST['status_code'] ?? 'open';
     $resolved_note = trim($_POST['resolved_note'] ?? '');
@@ -49,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['btn_update_status']))
     $msg = "Incident resolution updated successfully!";
 }
 
-// TRUY VẤN CHI TIẾT (ĐÃ LƯỢC BỎ CÁC TRƯỜNG CREATED_BY VÀ UPDATED_BY)
+
 $sql = "
     SELECT 
         v.violation_id, v.violation_type, v.description, v.violation_date, v.severity,

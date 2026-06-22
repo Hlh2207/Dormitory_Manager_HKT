@@ -1,8 +1,5 @@
 <?php
-// ============================================================
-//  ViolationFormView.php — Add New Disciplinary Incident
-//  Inserts data into: violation_records
-// ============================================================
+
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -30,11 +27,11 @@ try {
 $errorMsg = "";
 $successMsg = "";
 
-// Lấy danh sách sinh viên đang hoạt động để chọn trong Dropdown Form
+
 $studentSql = "SELECT student_id, student_code, full_name FROM students WHERE status_code = 'active' ORDER BY student_code";
 $students = $pdo->query($studentSql)->fetchAll();
 
-// Xử lý Submit Form
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['btn_save_violation'])) {
     $student_id     = $_POST['student_id'] ?? '';
     $violation_type = $_POST['violation_type'] ?? '';
@@ -49,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['btn_save_violation'])
     if (empty($student_id) || empty($violation_type) || empty($description)) {
         $errorMsg = "Please select a student, infraction type, and enter description.";
     } else {
-        // Lấy room_id hiện tại của sinh viên đó từ hợp đồng/đăng ký nếu có
+        
         $roomSql = "SELECT room_id FROM contracts WHERE student_id = :sid AND status_code = 'active' LIMIT 1";
         $roomStmt = $pdo->prepare($roomSql);
         $roomStmt->execute(['sid' => $student_id]);

@@ -1,8 +1,5 @@
 <?php
-// ============================================================
-//  ViolationView.php — Violation Records Management List
-//  Connects to: violation_records, students, rooms
-// ============================================================
+
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -28,7 +25,7 @@ try {
     die('<p style="color:red">DB Connection Failed: ' . htmlspecialchars($e->getMessage()) . '</p>');
 }
 
-// Truy vấn toàn bộ danh sách vi phạm
+
 $sql = "
     SELECT 
         v.violation_id, v.violation_type, v.description, v.violation_date, v.severity,
