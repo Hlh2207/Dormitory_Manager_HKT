@@ -3,7 +3,6 @@
 //  ContractFormView.php — Create / Edit Contract
 // ============================================================
 
-// ---------- 1. BẢO MẬT & SESSION (Đã thêm) ----------
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -136,20 +135,19 @@ if ($isEdit) {
     $statusOptions['terminated'] = 'Terminated';
 }
 
-// ---------- 4. GỌI HEADER CHUNG ----------
 $pageTitle = $isEdit ? 'Edit Contract' : 'New Contract';
 include 'header.php';
 ?>
 
 <main class="page">
     <div class="breadcrumb">
-        <a href="ContractListView.php">📄 Contracts</a>
+        <a href="ContractListView.php">Contracts</a>
         <span>›</span>
         <span><?= $isEdit ? 'Edit #' . $contractId : 'New Contract' ?></span>
     </div>
 
     <h1 class="page-title">
-        <?= $isEdit ? '✏ Edit Contract' : '📋 Create New Contract' ?>
+        <?= $isEdit ? '✏ Edit Contract' : 'Create New Contract' ?>
     </h1>
     <p class="page-desc"><?= $isEdit ? 'Update contract details.' : 'Fill in the information to create a new accommodation contract.' ?></p>
 
@@ -202,7 +200,7 @@ include 'header.php';
         </div>
 
         <div class="card">
-            <div class="card-header"><h2>📄 Contract Information</h2></div>
+            <div class="card-header"><h2>Contract Information</h2></div>
             <div class="card-body">
                 <div class="form-grid form-grid-2">
                     <div class="form-group">
@@ -228,7 +226,7 @@ include 'header.php';
         </div>
 
         <div class="card">
-            <div class="card-header"><h2>💵 Financials & Status</h2></div>
+            <div class="card-header"><h2>Financials & Status</h2></div>
             <div class="card-body">
                 <div class="form-grid form-grid-2">
                     <div class="form-group">
@@ -239,7 +237,7 @@ include 'header.php';
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Deposit Amount (VND) <span class="required">*</span></label>
+                        <label class="form-label">Deposit Amount (VND)<span class="required">*</span></label>
                         <div class="pfx-wrap">
                             <span class="pfx">VND</span>
                             <input type="number" name="deposit_amount" class="form-control" value="<?= htmlspecialchars($fDeposit) ?>" required>
