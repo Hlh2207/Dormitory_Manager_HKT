@@ -4,6 +4,8 @@
 // ============================================================
 require_once __DIR__ . '/ContractController.php';
 require_once __DIR__ . '/InvoiceController.php';
+require_once __DIR__ . '/RoomController.php';      // <-- Thêm mới: Task 3
+require_once __DIR__ . '/StudentController.php';   // <-- Thêm mới: Task 4
 
 $host = 'localhost'; $db = 'campus_final'; $user = 'root'; $pass = '';
 try {
@@ -13,8 +15,12 @@ try {
     ]);
 } catch (PDOException $e) { die('DB Connection Failed.'); }
 
+// Khởi tạo các Controllers
 $contractController = new ContractController($pdo);
 $invoiceController  = new InvoiceController($pdo);
+$roomController     = new RoomController($pdo);
+$studentController  = new StudentController($pdo);
+
 $message = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -28,6 +34,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $end   = $_POST['end_date'];
             $dep   = (float)$_POST['deposit'];
             $message = $contractController->approveRegistration($regId, $start, $end, $dep);
+            break;
+
+        // --- TEST TASK 3 (MỚI): XẾP PHÒNG / AUTO-FULL ---
+        case 'assign_room':
+            $roomId = (int)$_POST['room_id'];
+            // Vui lòng đổi "assignStudentToRoom" thành tên hàm thực tế bạn viết
+            $message = $roomController->assignStudentToRoom($roomId);
+            break;
+
+        // --- TEST TASK 3 (MỚI): BẢO TRÌ PHÒNG ---
+        case 'set_maintenance':
+            $roomId = (int)$_POST['room_id'];
+            // Vui lòng đổi "setRoomMaintenance" thành tên hàm thực tế bạn viết
+            $message = $roomController->setRoomMaintenance($roomId);
+            break;
+
+        // --- TEST TASK 4 (MỚI): XÓA SINH VIÊN (CASCADE) ---
+        case 'delete_student':
+            $studentId = (int)$_POST['student_id'];
+            // Vui lòng đổi "deleteStudent" thành tên hàm thực tế bạn viết
+            $message = $studentController->deleteStudent($studentId);
             break;
 
         // --- TEST TASK 3: QUÉT HẾT HẠN ---
@@ -56,11 +83,11 @@ include 'header.php';
 
 <main class="page">
     <div class="breadcrumb">
-        <a href="DashboardView.php">Dashboard</a> <span>›</span> <span>Logic Testing Area</span>
+        <a href="index.php">Dashboard</a> <span>›</span> <span>Logic Testing Area</span>
     </div>
 
     <h1 class="page-title">Test Backend Logic (Controllers)</h1>
-    <p class="page-desc">Simulate backend processes for Contract Approvals, Expirations, and Utility Invoicing with SQL Transactions.</p>
+    <p class="page-desc">Simulate backend processes for Contract Approvals, Expirations, Room Actions, Student Deletions, and Utility Invoicing.</p>
 
     <?php if ($message): ?>
     <div class="alert <?= $message['success'] ? 'alert-success' : 'alert-error' ?>">
@@ -97,6 +124,63 @@ include 'header.php';
         </div>
 
         <div class="card">
+            <div class="card-header"><h2>Task 3: Auto-Update Room Status</h2></div>
+            <div class="card-body">
+                <form method="POST" style="margin-bottom: 24px;">
+                    <input type="hidden" name="action" value="assign_room">
+                    <div class="form-group" style="margin-bottom:12px;">
+                        <label class="form-label">Room ID (To Assign 1 Student)</label>
+                        <input type="number" name="room_id" class="form-control" required placeholder="e.g. 1">
+                        <div class="form-hint">Test logic: <code>current_occupancy +1</code>. If capacity reached, status changes to <b>'full'</b>.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center">Assign Student</button>
+                </form>
+
+                <hr style="border:none; border-top:1px dashed var(--border); margin: 20px 0;">
+
+                <form method="POST">
+                    <input type="hidden" name="action" value="set_maintenance">
+                    <div class="form-group" style="margin-bottom:12px;">
+                        <label class="form-label">Room ID (To Maintenance)</label>
+                        <input type="number" name="room_id" class="form-control" required placeholder="e.g. 2">
+                        <div class="form-hint">Test logic: Updates status directly to <b>'maintenance'</b>.</div>
+                    </div>
+                    <button type="submit" class="btn" style="width:100%; justify-content:center; background:var(--yellow); color:#fff; border:none; font-weight:bold;">Set Maintenance</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h2>Task 4: Delete Student Cascade</h2></div>
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="action" value="delete_student">
+                    <p style="font-size:14px; color:var(--muted); margin-bottom:20px; line-height:1.6">
+                        Simulates deleting a student. The backend should <code>DELETE</code> the student record, trigger deletion of their active contracts, and <b>free up 1 bed</b> in their former room.
+                    </p>
+                    <div class="form-group" style="margin-bottom:16px;">
+                        <label class="form-label">Student ID (To Delete)</label>
+                        <input type="number" name="student_id" class="form-control" required placeholder="e.g. 5">
+                    </div>
+                    <button type="submit" class="btn btn-danger" style="width:100%; justify-content:center; border:none;">⚠ Delete Student</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h2>Task 3: Cronjob - Expired Contracts</h2></div>
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="action" value="scan_expired">
+                    <p style="font-size:14px; color:var(--muted); margin-bottom:20px; line-height:1.6">
+                        Simulates a nightly cronjob. It scans the <code>contracts</code> table. If any contract's <code>end_date</code> is in the past, it changes status to Expired and frees up the room bed.
+                    </p>
+                    <button type="submit" class="btn" style="width:100%; justify-content:center; background:var(--blue); color:#fff; font-weight:bold; border:none;">Run Expiration Scanner</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
             <div class="card-header"><h2>Task 4: Generate Utility Invoice</h2></div>
             <div class="card-body">
                 <form method="POST">
@@ -124,20 +208,7 @@ include 'header.php';
                         <label class="form-label">Invoice ID (Unpaid)</label>
                         <input type="number" name="invoice_id" class="form-control" required placeholder="e.g. 1">
                     </div>
-                    <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center">Confirm Payment</button>
-                </form>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header"><h2>Task 3: Cronjob - Expired Contracts</h2></div>
-            <div class="card-body">
-                <form method="POST">
-                    <input type="hidden" name="action" value="scan_expired">
-                    <p style="font-size:14px; color:var(--muted); margin-bottom:20px; line-height:1.6">
-                        Simulates a nightly cronjob. It scans the <code>contracts</code> table. If any contract's <code>end_date</code> is in the past, it changes status to Expired and frees up the room bed.
-                    </p>
-                    <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; background:var(--yellow); color:#fff">Run Expiration Scanner</button>
+                    <button type="submit" class="btn" style="width:100%; justify-content:center; background:var(--green); color:#fff; font-weight:bold; border:none;">Confirm Payment</button>
                 </form>
             </div>
         </div>
