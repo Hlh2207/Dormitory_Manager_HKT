@@ -127,9 +127,7 @@ class InvoiceController
         }
     }
 
-    // ============================================================
     // TASK 4: XÁC NHẬN THANH TOÁN (Unpaid -> Paid)
-    // ============================================================
     public function markAsPaid(int $invoiceId): array
     {
         try {
